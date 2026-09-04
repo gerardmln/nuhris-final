@@ -19,3 +19,7 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    @include('partials.employee-form-rules-script')
+@endpush
