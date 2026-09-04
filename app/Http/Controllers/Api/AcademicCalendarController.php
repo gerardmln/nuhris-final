@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\AcademicCalendarEntry;
+use Illuminate\Http\JsonResponse;
+
+class AcademicCalendarController extends Controller
+{
+    public function index(): JsonResponse
+    {
+        $entries = AcademicCalendarEntry::query()
+            ->orderBy('event_date')
+            ->get(['id', 'title', 'entry_type', 'day_type', 'event_date', 'description'])
+            ->map(fn (AcademicCalendarEntry $entry) => [
+                'id' => $entry->id,
+                'title' => $entry->title,
+                'entry_type' => $entry->entry_type,
+                'day_type' => $entry->day_type,
+                'event_date' => $entry->event_date->toDateString(),
+                'description' => $entry->description,
+            ])
+            ->values();
+
+        return response()->json($entries);
+    }
+}

@@ -1,0 +1,33 @@
+@extends('admin.layout')
+
+@section('title', 'Admin Dashboard')
+@section('page_title', 'Dashboard')
+
+@section('content')
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
+            <p class="text-xs font-medium text-slate-500">Total Employees</p>
+            <p class="mt-1 text-4xl font-extrabold">{{ $stats['total_employees'] }}</p>
+        </article>
+        <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
+            <p class="text-xs font-medium text-slate-500">Active Faculty</p>
+            <p class="mt-1 text-4xl font-extrabold">{{ $stats['active_faculty'] }}</p>
+        </article>
+        <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
+            <p class="text-xs font-medium text-slate-500">Compliance Rate</p>
+            <p class="mt-1 text-4xl font-extrabold">{{ $stats['compliance_rate'] }}%</p>
+        </article>
+        <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
+            <p class="text-xs font-medium text-slate-500">Attendance Rate</p>
+            <p class="mt-1 text-4xl font-extrabold">{{ $stats['attendance_rate'] }}%</p>
+        </article>
+        <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
+            <p class="text-xs font-medium text-slate-500">Expiring PRC</p>
+            <p class="mt-1 text-4xl font-extrabold">{{ $stats['expiring_prc'] }}</p>
+        </article>
+        <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
+            <p class="text-xs font-medium text-slate-500">Pending Verifications</p>
+            <p class="mt-1 text-4xl font-extrabold">{{ $stats['pending_verifications'] }}</p>
+        </article>
+    </div>
+@endsection
