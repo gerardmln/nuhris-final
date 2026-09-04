@@ -85,7 +85,10 @@ function filterRankingOptions(rankingControl, position) {
         }
 
         const optionValue = normalize(option.value);
-        const matches = !prefix || optionValue.startsWith(prefix);
+        // Match "Teacher 1" for prefix "teacher", but not "Senior Teacher 1".
+        const matches = !prefix
+            || optionValue === prefix
+            || optionValue.startsWith(`${prefix} `);
 
         option.hidden = !matches;
         option.disabled = !matches;

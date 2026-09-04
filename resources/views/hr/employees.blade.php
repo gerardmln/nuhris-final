@@ -354,6 +354,8 @@
                 </div>
                 <div data-employee-field="department">
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Department *</label>
+                    {{-- Hidden mirrors department when the select is disabled (SHS auto-assign). --}}
+                    <input type="hidden" name="department_id" data-employee-control="department_hidden" value="" disabled>
                     <select name="department_id" data-employee-control="department" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-500">
                         <option value="">Select Department</option>
                         @foreach ($departments as $department)
@@ -463,6 +465,7 @@
                 </div>
                 <div data-employee-field="department">
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Department *</label>
+                    <input type="hidden" name="department_id" data-employee-control="department_hidden" value="" disabled>
                     <select name="department_id" data-employee-control="department" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-500">
                         <option value="">Select Department</option>
                         @foreach ($departments as $department)
@@ -617,7 +620,9 @@
                 </div>
                 <div data-employee-field="department">
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Department *</label>
+                    <input type="hidden" name="department_id" data-employee-control="department_hidden" value="" disabled>
                     <select id="edit-department-id" name="department_id" data-employee-control="department" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-500">
+                        <option value="">Select Department</option>
                         @foreach ($departments as $department)
                             <option value="{{ $department->id }}">{{ $department->name }}</option>
                         @endforeach
@@ -939,7 +944,21 @@
                 }
 
                 setTimeout(() => {
-                    modal.querySelectorAll('form').forEach((form) => updatePositionOptions(form));
+                    modal.querySelectorAll('form').forEach((form) => {
+                        updatePositionOptions(form);
+
+                        // Re-run bundled employee-form-rules (department / ranking / SHS).
+                        const typeSelect = form.querySelector('[data-employee-control="employment_type"]');
+                        const positionSelect = form.querySelector('[data-employee-control="position"]');
+
+                        if (typeSelect) {
+                            typeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+
+                        if (positionSelect) {
+                            positionSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    });
                 }, 50);
             });
         })();

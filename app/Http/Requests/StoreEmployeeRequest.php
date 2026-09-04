@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Department;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -14,6 +15,25 @@ class StoreEmployeeRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    /**
+     * Ensure SHS positions always carry the SHS department before validation,
+     * even when the department select was disabled in the browser.
+     */
+    protected function prepareForValidation(): void
+    {
+        $position = Str::lower((string) $this->input('position'));
+
+        if (! Str::contains($position, '(shs)')) {
+            return;
+        }
+
+        $shsDepartmentId = Department::query()->where('name', 'like', 'SHS%')->value('id');
+
+        if (filled($shsDepartmentId)) {
+            $this->merge(['department_id' => $shsDepartmentId]);
+        }
     }
 
     /**
@@ -32,7 +52,9 @@ class StoreEmployeeRequest extends FormRequest
         $employmentType = Str::lower((string) $this->input('employment_type'));
         $selectedPosition = Str::lower((string) $this->input('position'));
         $isPartTimeFaculty = $employmentType === 'part-time faculty';
-        $requiresDepartment = $isPartTimeFaculty || Str::contains($selectedPosition, ['professor', 'dean', 'program chair']);
+        $requiresDepartment = $isPartTimeFaculty
+            || $selectedPosition === 'part-time faculty'
+            || Str::contains($selectedPosition, ['professor', 'dean', 'program chair', 'instructor', '(shs)']);
         $allowedRankings = $this->allowedRankingsForPosition($selectedPosition, $rankings);
         $requiresRanking = ! empty($allowedRankings);
 
@@ -95,6 +117,10 @@ class StoreEmployeeRequest extends FormRequest
             str_contains($selectedPosition, 'associate professor') => 'associate professor',
             str_contains($selectedPosition, 'full professor') => 'full professor',
             str_contains($selectedPosition, 'instructor') => 'instructor',
+            str_contains($selectedPosition, 'master teacher') => 'master teacher',
+            str_contains($selectedPosition, 'senior teacher') => 'senior teacher',
+            // Teacher (SHS) — checked after senior/master so those do not fall through.
+            str_contains($selectedPosition, 'teacher') => 'teacher',
             default => '',
         };
 
@@ -102,6 +128,13 @@ class StoreEmployeeRequest extends FormRequest
             return [];
         }
 
-        return array_values(array_filter($rankings, fn ($ranking) => str_starts_with(Str::lower((string) $ranking), $prefix)));
+        return array_values(array_filter(
+            $rankings,
+            function ($ranking) use ($prefix) {
+                $normalized = Str::lower((string) $ranking);
+
+                return $normalized === $prefix || str_starts_with($normalized, $prefix.' ');
+            }
+        ));
     }
 }
