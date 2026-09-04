@@ -29,11 +29,9 @@ class UpdateEmployeeRequest extends FormRequest
             return;
         }
 
-        $shsDepartmentId = Department::query()->where('name', 'like', 'SHS%')->value('id');
-
-        if (filled($shsDepartmentId)) {
-            $this->merge(['department_id' => $shsDepartmentId]);
-        }
+        $this->merge([
+            'department_id' => Department::shsId(),
+        ]);
     }
 
     /**

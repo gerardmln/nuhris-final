@@ -65,6 +65,17 @@ function requiresGroupedRanking(position) {
     return rankingPrefixForPosition(position) !== '';
 }
 
+function setFieldVisible(field, visible) {
+    if (!field) {
+        return;
+    }
+
+    // HTML hidden attribute works even when Tailwind/Vite CSS fails to load.
+    field.hidden = !visible;
+    field.classList.toggle('hidden', !visible);
+    field.style.display = visible ? '' : 'none';
+}
+
 function filterRankingOptions(rankingControl, position) {
     if (!rankingControl) {
         return;
@@ -221,7 +232,7 @@ function updateEmployeeFormState(form) {
     const departmentHidden = getControl(form, 'department_hidden');
 
     if (departmentField && departmentControl) {
-        departmentField.classList.toggle('hidden', !needsDepartment);
+        setFieldVisible(departmentField, needsDepartment);
         departmentControl.required = needsDepartment && !isShs;
         departmentControl.disabled = isShs;
 
@@ -246,7 +257,7 @@ function updateEmployeeFormState(form) {
     if (rankingField && rankingControl) {
         filterRankingOptions(rankingControl, position);
 
-        rankingField.classList.toggle('hidden', !needsRanking);
+        setFieldVisible(rankingField, needsRanking);
         rankingControl.required = needsRanking;
 
         if (!needsRanking) {
@@ -256,6 +267,11 @@ function updateEmployeeFormState(form) {
 }
 
 function initializeEmployeeForm(form) {
+    // Skip when the page already bound the Hostinger-safe inline script.
+    if (!form || form.dataset.employeeFormBound === '1') {
+        return;
+    }
+
     const typeControl = getControl(form, 'employment_type');
     const positionControl = getControl(form, 'position');
 
@@ -271,6 +287,7 @@ function initializeEmployeeForm(form) {
         typeControl.addEventListener('change', handleChange);
     }
 
+    form.dataset.employeeFormBound = '1';
     updateEmployeeFormState(form);
 }
 

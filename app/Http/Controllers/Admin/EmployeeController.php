@@ -23,6 +23,8 @@ class EmployeeController extends Controller
 {
     public function create(): View
     {
+        Department::ensureConfiguredSchoolsExist();
+
         return view('admin.employees.create', array_merge([
             'departments' => Department::query()->facultySchools()->orderBy('name')->get(),
         ], $this->formOptions()));
@@ -118,6 +120,8 @@ class EmployeeController extends Controller
 
     public function edit(Employee $employee): View
     {
+        Department::ensureConfiguredSchoolsExist();
+
         return view('admin.employees.edit', array_merge([
             'employee' => $employee,
             'departments' => Department::query()->orderBy('name')->get(),
@@ -260,11 +264,7 @@ class EmployeeController extends Controller
 
         // SHS positions always belong to the SHS department.
         if (Str::contains($position, '(shs)')) {
-            $shsDepartmentId = Department::query()->where('name', 'like', 'SHS%')->value('id');
-
-            if (filled($shsDepartmentId)) {
-                $payload['department_id'] = $shsDepartmentId;
-            }
+            $payload['department_id'] = Department::shsId();
 
             return $payload;
         }

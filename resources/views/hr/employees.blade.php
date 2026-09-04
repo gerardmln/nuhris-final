@@ -744,19 +744,28 @@
             if (editAddress) editAddress.value = address === 'N/A' ? '' : address;
             if (editDepartmentId) editDepartmentId.value = departmentId;
             if (editEmploymentType) editEmploymentType.value = employmentType === 'N/A' ? '' : employmentType;
-            if (editEmploymentType) {
-                editEmploymentType.dispatchEvent(new Event('change', { bubbles: true }));
-            }
             if (editPosition) editPosition.value = position;
-            if (editPosition) {
-                editPosition.dispatchEvent(new Event('change', { bubbles: true }));
-            }
             if (editRanking) editRanking.value = ranking === 'N/A' ? '' : ranking;
             if (editHireDate) editHireDate.value = hireDate;
             if (editOfficialTimeIn) editOfficialTimeIn.value = officialTimeIn;
             if (editOfficialTimeOut) editOfficialTimeOut.value = officialTimeOut;
-            if (editPosition) {
-                editPosition.dispatchEvent(new Event('change', { bubbles: true }));
+
+            if (typeof window.updateEmployeeFormState === 'function' && employeeEditForm) {
+                window.updateEmployeeFormState(employeeEditForm);
+                // Restore ranking after filters run (filters may clear mismatched values).
+                if (editRanking) editRanking.value = ranking === 'N/A' ? '' : ranking;
+                if (editDepartmentId && departmentId && !String(position || '').toLowerCase().includes('(shs)')) {
+                    editDepartmentId.value = departmentId;
+                }
+                window.updateEmployeeFormState(employeeEditForm);
+                if (editRanking) editRanking.value = ranking === 'N/A' ? '' : ranking;
+            } else {
+                if (editEmploymentType) {
+                    editEmploymentType.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                if (editPosition) {
+                    editPosition.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             }
         }
 
@@ -851,113 +860,251 @@
         });
 
         (function () {
-            const positionSelects = Array.from(document.querySelectorAll('[data-employee-control="position"]'));
+            const normalize = (value) => String(value ?? '').trim().toLowerCase();
+            const teachingKeywords = ['professor', 'dean', 'program chair', 'instructor'];
+            const shsKeywords = ['(shs)'];
 
-            function getMode(value) {
-                const normalized = (value || '').trim().toLowerCase();
-
-                if (normalized === 'part-time faculty') {
-                    return 'part-time-faculty';
-                }
-
-                if (normalized.includes('admin support personnel')) {
-                    return 'admin-support';
-                }
-
-                if (normalized.includes('faculty')) {
-                    return 'faculty';
-                }
-
-                return 'all';
+            function isPartTimeFacultyValue(value) {
+                return normalize(value) === 'part-time faculty';
             }
 
-            function updatePositionOptions(form) {
-                const employmentTypeSelect = form.querySelector('[data-employee-control="employment_type"]');
-                const positionSelect = form.querySelector('[data-employee-control="position"]');
+            function isTeachingPosition(position) {
+                const normalized = normalize(position);
 
-                if (!employmentTypeSelect || !positionSelect) {
-                    return;
-                }
+                return teachingKeywords.some((keyword) => normalized.includes(keyword))
+                    || shsKeywords.some((keyword) => normalized.includes(keyword))
+                    || isPartTimeFacultyValue(normalized);
+            }
 
-                const mode = getMode(employmentTypeSelect.value);
-                const options = Array.from(positionSelect.options);
+            function needsDepartmentSelection(employmentType, position) {
+                return isTeachingPosition(position) || isPartTimeFacultyValue(employmentType);
+            }
+
+            function isShsPosition(position) {
+                return normalize(position).includes('(shs)');
+            }
+
+            function rankingPrefixForPosition(position) {
+                const normalized = normalize(position);
+
+                if (normalized.includes('assistant professor')) return 'assistant professor';
+                if (normalized.includes('associate professor')) return 'associate professor';
+                if (normalized.includes('full professor')) return 'full professor';
+                if (normalized.includes('instructor')) return 'instructor';
+                if (normalized.includes('master teacher')) return 'master teacher';
+                if (normalized.includes('senior teacher')) return 'senior teacher';
+                if (normalized.includes('teacher')) return 'teacher';
+
+                return '';
+            }
+
+            function requiresGroupedRanking(position) {
+                return rankingPrefixForPosition(position) !== '';
+            }
+
+            function getControl(form, name) {
+                return form.querySelector(`[data-employee-control="${name}"]`);
+            }
+
+            function getField(form, name) {
+                return form.querySelector(`[data-employee-field="${name}"]`);
+            }
+
+            function setFieldVisible(field, visible) {
+                if (!field) return;
+                // Use the HTML hidden attribute so this works even if Tailwind CSS fails to load.
+                field.hidden = !visible;
+                field.classList.toggle('hidden', !visible);
+                field.style.display = visible ? '' : 'none';
+            }
+
+            function filterRankingOptions(rankingControl, position) {
+                if (!rankingControl) return;
+
+                const prefix = rankingPrefixForPosition(position);
+                const options = Array.from(rankingControl.options);
+                let selectedStillVisible = false;
 
                 options.forEach((option) => {
-                    const category = (option.dataset.employmentCategory || '').toLowerCase();
-                    const value = (option.value || '').trim().toLowerCase();
-                    const isPartTimeOption = /part\s*[- ]\s*time/.test(value);
-
-                    let disabled = false;
-
-                    if (mode === 'part-time-faculty') {
-                        disabled = !isPartTimeOption;
-                    } else if (mode === 'faculty') {
-                        disabled = category === 'asp' || isPartTimeOption;
-                    } else if (mode === 'admin-support') {
-                        disabled = category === 'faculty' || isPartTimeOption;
+                    if (option.value === '') {
+                        option.hidden = false;
+                        option.disabled = false;
+                        if (option.value === rankingControl.value) selectedStillVisible = true;
+                        return;
                     }
 
-                    option.disabled = disabled;
-                    if (option.value !== '') {
-                        option.hidden = disabled;
+                    const optionValue = normalize(option.value);
+                    const matches = !prefix
+                        || optionValue === prefix
+                        || optionValue.startsWith(`${prefix} `);
+
+                    option.hidden = !matches;
+                    option.disabled = !matches;
+
+                    if (matches && option.value === rankingControl.value) {
+                        selectedStillVisible = true;
                     }
                 });
 
-                if (positionSelect.value && positionSelect.options[positionSelect.selectedIndex]?.disabled) {
-                    positionSelect.value = '';
+                if (!selectedStillVisible && prefix) {
+                    rankingControl.value = '';
                 }
             }
 
-            positionSelects.forEach((positionSelect) => {
-                const form = positionSelect.closest('form');
+            function employmentCategory(type) {
+                const normalized = normalize(type);
+                if (!normalized) return '';
+                if (isPartTimeFacultyValue(normalized)) return 'part-time-faculty';
+                if (normalized.includes('faculty')) return 'faculty';
+                if (normalized.includes('admin') || normalized === 'asp') return 'asp';
+                return '';
+            }
 
-                if (!form) {
+            function positionMatchesCategory(option, category) {
+                const optionCategory = option.dataset.employmentCategory || '';
+                const isPartTimeOption = isPartTimeFacultyValue(option.value);
+
+                if (category === '') return true;
+                if (category === 'part-time-faculty') return isPartTimeOption;
+                if (category === 'faculty') return optionCategory === 'faculty' && !isPartTimeOption;
+                if (category === 'asp') return optionCategory === 'asp';
+
+                return optionCategory === category;
+            }
+
+            function filterPositionOptions(positionControl, employmentType) {
+                if (!positionControl) return;
+
+                const category = employmentCategory(employmentType);
+                const options = Array.from(positionControl.options);
+                let selectedStillVisible = false;
+
+                options.forEach((option) => {
+                    if (option.value === '') {
+                        option.hidden = false;
+                        option.disabled = false;
+                        return;
+                    }
+
+                    const matches = positionMatchesCategory(option, category);
+                    option.hidden = !matches;
+                    option.disabled = !matches;
+
+                    if (matches && option.value === positionControl.value) {
+                        selectedStillVisible = true;
+                    }
+                });
+
+                if (!selectedStillVisible && category !== '') {
+                    positionControl.value = '';
+                }
+            }
+
+            function updateEmployeeFormState(form) {
+                if (!form) return;
+
+                const employmentType = getControl(form, 'employment_type')?.value ?? '';
+                const positionControl = getControl(form, 'position');
+
+                filterPositionOptions(positionControl, employmentType);
+
+                const position = positionControl?.value ?? '';
+                const departmentField = getField(form, 'department');
+                const departmentControl = getControl(form, 'department');
+                const rankingField = getField(form, 'ranking');
+                const rankingControl = getControl(form, 'ranking');
+                const departmentHidden = getControl(form, 'department_hidden');
+
+                const needsDepartment = needsDepartmentSelection(employmentType, position);
+                const needsRanking = requiresGroupedRanking(position);
+                const isShs = isShsPosition(position);
+
+                if (departmentField && departmentControl) {
+                    setFieldVisible(departmentField, needsDepartment);
+                    departmentControl.required = needsDepartment && !isShs;
+                    departmentControl.disabled = isShs;
+
+                    if (isShs) {
+                        const shsOption = Array.from(departmentControl.options).find(
+                            (opt) => normalize(opt.textContent).includes('shs')
+                        );
+
+                        if (shsOption) {
+                            departmentControl.value = shsOption.value;
+                        }
+                    } else if (!needsDepartment) {
+                        departmentControl.value = '';
+                    }
+
+                    if (departmentHidden) {
+                        departmentHidden.value = departmentControl.value;
+                        departmentHidden.disabled = !isShs;
+                    }
+                }
+
+                if (rankingField && rankingControl) {
+                    filterRankingOptions(rankingControl, position);
+                    setFieldVisible(rankingField, needsRanking);
+                    rankingControl.required = needsRanking;
+
+                    if (!needsRanking) {
+                        rankingControl.value = '';
+                    }
+                }
+            }
+
+            function initializeEmployeeForm(form) {
+                if (!form || form.dataset.employeeFormBound === '1') {
+                    updateEmployeeFormState(form);
                     return;
                 }
 
-                const employmentTypeSelect = form.querySelector('[data-employee-control="employment_type"]');
+                const typeControl = getControl(form, 'employment_type');
+                const positionControl = getControl(form, 'position');
 
-                if (!employmentTypeSelect) {
-                    return;
+                if (!positionControl) return;
+
+                const handleChange = () => updateEmployeeFormState(form);
+
+                positionControl.addEventListener('change', handleChange);
+                positionControl.addEventListener('focus', handleChange);
+                positionControl.addEventListener('mousedown', handleChange);
+
+                if (typeControl) {
+                    typeControl.addEventListener('change', handleChange);
                 }
 
-                employmentTypeSelect.addEventListener('change', () => updatePositionOptions(form));
-                positionSelect.addEventListener('change', () => updatePositionOptions(form));
-                // Re-apply filtering exactly when Position is opened to avoid stale
-                // option states in some browsers/modal timing scenarios.
-                positionSelect.addEventListener('focus', () => updatePositionOptions(form));
-                positionSelect.addEventListener('mousedown', () => updatePositionOptions(form));
-                updatePositionOptions(form);
-            });
+                form.dataset.employeeFormBound = '1';
+                updateEmployeeFormState(form);
+            }
+
+            function initializeEmployeeForms() {
+                document.querySelectorAll('[data-employee-form]').forEach((form) => {
+                    initializeEmployeeForm(form);
+                });
+            }
+
+            // Expose for modal open / edit populate flows.
+            window.updateEmployeeFormState = updateEmployeeFormState;
+            window.initializeEmployeeForms = initializeEmployeeForms;
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeEmployeeForms);
+            } else {
+                initializeEmployeeForms();
+            }
 
             document.addEventListener('click', (event) => {
                 const trigger = event.target.closest('[data-open-modal]');
-
-                if (!trigger) {
-                    return;
-                }
+                if (!trigger) return;
 
                 const modal = document.getElementById(trigger.getAttribute('data-open-modal'));
-
-                if (!modal) {
-                    return;
-                }
+                if (!modal) return;
 
                 setTimeout(() => {
-                    modal.querySelectorAll('form').forEach((form) => {
-                        updatePositionOptions(form);
-
-                        // Re-run bundled employee-form-rules (department / ranking / SHS).
-                        const typeSelect = form.querySelector('[data-employee-control="employment_type"]');
-                        const positionSelect = form.querySelector('[data-employee-control="position"]');
-
-                        if (typeSelect) {
-                            typeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-
-                        if (positionSelect) {
-                            positionSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
+                    modal.querySelectorAll('[data-employee-form]').forEach((form) => {
+                        initializeEmployeeForm(form);
+                        updateEmployeeFormState(form);
                     });
                 }, 50);
             });
