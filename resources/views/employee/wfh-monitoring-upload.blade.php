@@ -17,6 +17,7 @@
         <div class="max-w-3xl">
             <h2 class="text-3xl font-bold text-slate-900">Upload WFH Sheet</h2>
             <p class="mt-2 text-sm text-slate-600">Any file type is accepted. HR will review the upload first, then approve or decline it based on the selected WFH date.</p>
+            <p class="mt-2 text-sm text-slate-600">Time in and time out must be more than 2 hours apart, and times between 11:00 PM and 4:00 AM are not allowed.</p>
         </div>
 
         <form method="POST" action="{{ route('employee.wfh-monitoring.store') }}" enctype="multipart/form-data" class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-4">

@@ -17,11 +17,13 @@ use App\Services\EmployeeScheduleService;
 use App\Services\LeaveBalanceService;
 use App\Services\SupabaseAuthSyncService;
 use App\Services\SupabaseStorageService;
+use App\Support\EmployeeWorkTimeConstraints;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 class PortalController extends Controller
@@ -521,13 +523,30 @@ class PortalController extends Controller
         $rules = [];
         foreach ($scheduleService->weeklyDays() as $day) {
             $rules["days.{$day['key']}.mode"] = ['required', 'in:with_work,no_work'];
-            $rules["days.{$day['key']}.time_in"] = ['nullable', 'date_format:H:i'];
-            $rules["days.{$day['key']}.time_out"] = ['nullable', 'date_format:H:i'];
+            $rules["days.{$day['key']}.time_in"] = ['nullable', 'required_if:days.'.$day['key'].'.mode,with_work', 'date_format:H:i'];
+            $rules["days.{$day['key']}.time_out"] = ['nullable', 'required_if:days.'.$day['key'].'.mode,with_work', 'date_format:H:i', 'after:days.'.$day['key'].'.time_in'];
         }
 
         $rules['term_label'] = ['required', 'string', 'in:'.implode(',', self::ALLOWED_TERM_LABELS)];
 
-        $validated = $request->validate($rules);
+        $validator = Validator::make($request->all(), $rules, [
+            'days.*.time_in.required_if' => 'Please enter a time in for each work day.',
+            'days.*.time_out.required_if' => 'Please enter a time out for each work day.',
+            'days.*.time_out.after' => 'The time out must be later than the time in.',
+        ]);
+
+        foreach ($scheduleService->weeklyDays() as $day) {
+            $mode = data_get($request->all(), "days.{$day['key']}.mode");
+            if ($mode === 'with_work') {
+                EmployeeWorkTimeConstraints::applyToValidator(
+                    $validator,
+                    "days.{$day['key']}.time_in",
+                    "days.{$day['key']}.time_out",
+                );
+            }
+        }
+
+        $validated = $validator->validate();
         $scheduleRows = $scheduleService->normalizeWeeklyInput($validated['days'] ?? []);
 
         DB::transaction(function () use ($employee, $request, $scheduleRows, $validated, $existingSchedule): void {

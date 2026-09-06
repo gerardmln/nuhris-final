@@ -9,10 +9,12 @@ use App\Models\Employee;
 use App\Models\User;
 use App\Models\WfhMonitoringSubmission;
 use App\Services\SupabaseStorageService;
+use App\Support\EmployeeWorkTimeConstraints;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 class WfhMonitoringController extends Controller
@@ -74,7 +76,7 @@ class WfhMonitoringController extends Controller
 
     public function store(Request $request, SupabaseStorageService $storage): RedirectResponse
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'wfh_date' => ['required', 'date'],
             'time_in' => ['required', 'date_format:H:i'],
             'time_out' => ['required', 'date_format:H:i', 'after:time_in'],
@@ -90,6 +92,10 @@ class WfhMonitoringController extends Controller
             'monitoring_file.required' => 'Please choose a file first.',
             'monitoring_file.max' => 'The file is too large. Maximum allowed is 20 MB.',
         ]);
+
+        EmployeeWorkTimeConstraints::applyToValidator($validator);
+
+        $validated = $validator->validate();
 
         $employee = Employee::query()->where('email', $request->user()->email)->first();
 

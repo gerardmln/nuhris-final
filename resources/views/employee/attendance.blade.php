@@ -60,7 +60,10 @@
                             <option value="{{ $term }}" {{ old('term_label', $currentSchedule?->term_label ?? $currentSchedule?->semester_label ?? '') === $term ? 'selected' : '' }}>{{ $term }}</option>
                         @endforeach
                     </select>
-                    <p class="mt-1 text-xs text-slate-500">Choose the term before submitting.</p>
+                    <p class="mt-1 text-xs text-slate-500">Choose the term before submitting. Work times must be more than 2 hours apart, and times between 11:00 PM and 4:00 AM are not allowed.</p>
+                    @error('term_label')
+                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -89,6 +92,9 @@
                                         value="{{ old("days.{$day['key']}.time_in", $savedDay?->time_in?->format('H:i')) }}"
                                         class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
                                     >
+                                    @error("days.{$day['key']}.time_in")
+                                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <div>
                                     <label class="mb-1 block text-sm font-semibold text-slate-700">Time Out</label>
@@ -98,6 +104,9 @@
                                         value="{{ old("days.{$day['key']}.time_out", $savedDay?->time_out?->format('H:i')) }}"
                                         class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
                                     >
+                                    @error("days.{$day['key']}.time_out")
+                                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                             </div>
 
