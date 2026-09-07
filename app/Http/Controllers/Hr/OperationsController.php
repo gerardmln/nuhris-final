@@ -757,6 +757,8 @@ class OperationsController extends Controller
 
     public function uploadBiometrics(Request $request, EmployeeScheduleService $scheduleService): RedirectResponse
     {
+        @set_time_limit(180);
+
         $validated = $request->validate([
             'biometrics_file' => ['required', 'file', 'mimes:pdf', 'max:10240'],
         ], [
@@ -803,6 +805,9 @@ class OperationsController extends Controller
             $skipped = 0;
             $unmatchedEmployees = [];
             $appliedEmployees = [];
+            $matchedPairs = [];
+            $matchedEmployees = [];
+            $matchedDates = [];
 
             foreach ($records as $record) {
                 $employee = $this->findEmployeeInMemory(
@@ -819,6 +824,17 @@ class OperationsController extends Controller
                     continue;
                 }
 
+                $matchedPairs[] = [$employee, $record];
+                $matchedEmployees[$employee->id] = $employee;
+                $matchedDates[] = $record['date'];
+            }
+
+            $scheduleService->warmImportCaches(array_values($matchedEmployees), $matchedDates);
+
+            $now = now();
+            $upsertRows = [];
+
+            foreach ($matchedPairs as [$employee, $record]) {
                 $recordDate = Carbon::parse($record['date']);
                 $timeIn = !empty($record['time_in']) ? Carbon::parse($record['time_in']) : null;
                 $timeOut = !empty($record['time_out']) ? Carbon::parse($record['time_out']) : null;
@@ -830,27 +846,45 @@ class OperationsController extends Controller
                     $record['time_out'] ?? null,
                 );
 
-                AttendanceRecord::updateOrCreate(
-                    [
-                        'employee_id' => $employee->id,
-                        'record_date' => $recordDate->toDateString(),
-                    ],
-                    [
-                        'time_in' => $timeIn?->format('H:i:s'),
-                        'time_out' => $timeOut?->format('H:i:s'),
-                        'scheduled_time_in' => $evaluation['scheduled_time_in'],
-                        'scheduled_time_out' => $evaluation['scheduled_time_out'],
-                        'tardiness_minutes' => $evaluation['tardiness_minutes'],
-                        'undertime_minutes' => $evaluation['undertime_minutes'],
-                        'overtime_minutes' => $evaluation['overtime_minutes'],
-                        'schedule_status' => $evaluation['schedule_status'],
-                        'schedule_notes' => $evaluation['schedule_notes'],
-                        'status' => $evaluation['status'],
-                    ]
-                );
+                $upsertRows[] = [
+                    'employee_id' => $employee->id,
+                    'record_date' => $recordDate->toDateString(),
+                    'time_in' => $timeIn?->format('H:i:s'),
+                    'time_out' => $timeOut?->format('H:i:s'),
+                    'scheduled_time_in' => $evaluation['scheduled_time_in'],
+                    'scheduled_time_out' => $evaluation['scheduled_time_out'],
+                    'tardiness_minutes' => $evaluation['tardiness_minutes'],
+                    'undertime_minutes' => $evaluation['undertime_minutes'],
+                    'overtime_minutes' => $evaluation['overtime_minutes'],
+                    'schedule_status' => $evaluation['schedule_status'],
+                    'schedule_notes' => $evaluation['schedule_notes'],
+                    'status' => $evaluation['status'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
 
                 $imported++;
                 $appliedEmployees[$employee->full_name . ' (' . $employee->employee_id . ')'] = true;
+            }
+
+            foreach (array_chunk($upsertRows, 200) as $chunk) {
+                AttendanceRecord::upsert(
+                    $chunk,
+                    ['employee_id', 'record_date'],
+                    [
+                        'time_in',
+                        'time_out',
+                        'scheduled_time_in',
+                        'scheduled_time_out',
+                        'tardiness_minutes',
+                        'undertime_minutes',
+                        'overtime_minutes',
+                        'schedule_status',
+                        'schedule_notes',
+                        'status',
+                        'updated_at',
+                    ]
+                );
             }
 
             $message = "Biometric PDF processed — {$imported} attendance row(s) imported";
@@ -1578,6 +1612,8 @@ class OperationsController extends Controller
 
     /**
      * Parser for the NU LIPA / Mustard Seed "TIMESHEET REPORT" biometric PDF.
+     * Supports classic date-first rows and "Actual Break and Hours Worked"
+     * exports where PDF text puts totals first and the date at the end.
      */
     private function parseNuLipaFormat(array $lines): array
     {
@@ -1601,18 +1637,32 @@ class OperationsController extends Controller
                 continue;
             }
 
-            if (! preg_match('#^(\d{1,2}/\d{1,2}/\d{4})\s+(.+)$#', $line, $m)) {
+            $date = null;
+            $rest = null;
+
+            // Classic Timesheet Report: "04/07/2026 7:21 am 7:41 pm ..."
+            if (preg_match('#^(\d{1,2}/\d{1,2}/\d{4})\s+(.+)$#', $line, $m)) {
+                $date = $m[1];
+                $rest = $m[2];
+            }
+            // Actual Break and Hours Worked: "...12:38 pm 8:51 am08/01/2026"
+            elseif (preg_match('#^(.+?)(\d{1,2}/\d{1,2}/\d{4})\s*$#', $line, $m)) {
+                $rest = $m[1];
+                $date = $m[2];
+            } else {
                 continue;
             }
-
-            $date = $m[1];
-            $rest = $m[2];
 
             if (! preg_match_all('/\d{1,2}:\d{2}\s*(?:am|pm)/i', $rest, $timeMatches)) {
                 continue;
             }
 
             $times = $timeMatches[0];
+            // Text extraction may list Out before In; use earliest/latest punches.
+            usort($times, function (string $a, string $b): int {
+                return strtotime($this->normalizeTime($a)) <=> strtotime($this->normalizeTime($b));
+            });
+
             $timeIn = $times[0] ?? null;
             $timeOut = count($times) > 1 ? end($times) : null;
 

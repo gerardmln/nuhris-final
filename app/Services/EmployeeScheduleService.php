@@ -14,9 +14,99 @@ use Illuminate\Support\Collection;
 
 class EmployeeScheduleService
 {
+    /** @var array<string, string|null> */
+    private array $academicDayTypeCache = [];
+
+    /** @var array<int, EmployeeScheduleSubmission|null> */
+    private array $approvedSubmissionCache = [];
+
+    /** @var array<string, LeaveRequest|null> */
+    private array $approvedLeaveCache = [];
+
     private function systemStartDate(): Carbon
     {
         return Carbon::create(2026, 4, 1)->startOfDay();
+    }
+
+    /**
+     * Preload lookups used during biometric/DTR imports to avoid per-row queries.
+     *
+     * @param  iterable<int, Employee>  $employees
+     * @param  iterable<int, string>  $dates  Y-m-d strings
+     */
+    public function warmImportCaches(iterable $employees, iterable $dates): void
+    {
+        $employeeIds = collect($employees)->pluck('id')->unique()->filter()->values()->all();
+        $dateList = collect($dates)->filter()->unique()->values();
+
+        if ($dateList->isNotEmpty()) {
+            $entries = AcademicCalendarEntry::query()
+                ->whereIn('event_date', $dateList->all())
+                ->get(['event_date', 'day_type']);
+
+            foreach ($dateList as $date) {
+                $this->academicDayTypeCache[$date] = null;
+            }
+
+            foreach ($entries->groupBy(fn ($entry) => $entry->event_date?->toDateString() ?? (string) $entry->event_date) as $date => $group) {
+                $types = $group->pluck('day_type');
+                if ($types->contains('non_working')) {
+                    $this->academicDayTypeCache[$date] = 'non_working';
+                } elseif ($types->contains('working')) {
+                    $this->academicDayTypeCache[$date] = 'working';
+                }
+            }
+        }
+
+        if ($employeeIds === []) {
+            return;
+        }
+
+        $submissions = EmployeeScheduleSubmission::query()
+            ->with('days')
+            ->whereIn('employee_id', $employeeIds)
+            ->where('status', EmployeeScheduleSubmission::STATUS_APPROVED)
+            ->orderByDesc('submitted_at')
+            ->get()
+            ->unique('employee_id')
+            ->keyBy('employee_id');
+
+        foreach ($employeeIds as $employeeId) {
+            $this->approvedSubmissionCache[(int) $employeeId] = $submissions->get($employeeId);
+        }
+
+        $minDate = $dateList->min();
+        $maxDate = $dateList->max();
+
+        if (! $minDate || ! $maxDate) {
+            return;
+        }
+
+        $leaves = LeaveRequest::query()
+            ->whereIn('employee_id', $employeeIds)
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $maxDate)
+            ->whereDate('end_date', '>=', $minDate)
+            ->orderByDesc('start_date')
+            ->orderByDesc('updated_at')
+            ->get()
+            ->groupBy('employee_id');
+
+        foreach ($employeeIds as $employeeId) {
+            $employeeLeaves = $leaves->get($employeeId, collect());
+
+            foreach ($dateList as $date) {
+                $cacheKey = $employeeId.'|'.$date;
+                $this->approvedLeaveCache[$cacheKey] = $employeeLeaves->first(
+                    function (LeaveRequest $leave) use ($date) {
+                        $start = $leave->start_date?->toDateString();
+                        $end = $leave->end_date?->toDateString();
+
+                        return $start && $end && $start <= $date && $end >= $date;
+                    }
+                );
+            }
+        }
     }
 
     /**
@@ -45,25 +135,40 @@ class EmployeeScheduleService
 
     public function approvedSubmissionForDate(Employee $employee, Carbon $date): ?EmployeeScheduleSubmission
     {
-        return EmployeeScheduleSubmission::query()
+        $employeeId = (int) $employee->id;
+
+        if (array_key_exists($employeeId, $this->approvedSubmissionCache)) {
+            return $this->approvedSubmissionCache[$employeeId];
+        }
+
+        $submission = EmployeeScheduleSubmission::query()
             ->with('days')
             ->where('employee_id', $employee->id)
             ->where('status', EmployeeScheduleSubmission::STATUS_APPROVED)
             ->latest('submitted_at')
             ->first();
+
+        return $this->approvedSubmissionCache[$employeeId] = $submission;
     }
 
     public function approvedLeaveForDate(Employee $employee, Carbon $date): ?LeaveRequest
     {
         $dateString = $date->toDateString();
+        $cacheKey = $employee->id.'|'.$dateString;
 
-        return $employee->leaveRequests()
+        if (array_key_exists($cacheKey, $this->approvedLeaveCache)) {
+            return $this->approvedLeaveCache[$cacheKey];
+        }
+
+        $leave = $employee->leaveRequests()
             ->where('status', 'approved')
             ->whereDate('start_date', '<=', $dateString)
             ->whereDate('end_date', '>=', $dateString)
             ->orderByDesc('start_date')
             ->orderByDesc('updated_at')
             ->first();
+
+        return $this->approvedLeaveCache[$cacheKey] = $leave;
     }
 
     /**
@@ -409,19 +514,25 @@ class EmployeeScheduleService
 
     private function academicCalendarDayType(Carbon $date): ?string
     {
+        $dateString = $date->toDateString();
+
+        if (array_key_exists($dateString, $this->academicDayTypeCache)) {
+            return $this->academicDayTypeCache[$dateString];
+        }
+
         $dayTypes = AcademicCalendarEntry::query()
-            ->whereDate('event_date', $date->toDateString())
+            ->whereDate('event_date', $dateString)
             ->pluck('day_type');
 
         if ($dayTypes->contains('non_working')) {
-            return 'non_working';
+            return $this->academicDayTypeCache[$dateString] = 'non_working';
         }
 
         if ($dayTypes->contains('working')) {
-            return 'working';
+            return $this->academicDayTypeCache[$dateString] = 'working';
         }
 
-        return null;
+        return $this->academicDayTypeCache[$dateString] = null;
     }
 
     private function normalizeTimeInput(mixed $value): ?string
