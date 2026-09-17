@@ -14,6 +14,7 @@ use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
 use App\Models\User;
 use App\Models\WfhMonitoringSubmission;
+use App\Services\AuditLogService;
 use App\Services\EmployeeScheduleService;
 use App\Services\LeaveBalanceService;
 use App\Services\LeaveMonitoringService;
@@ -157,19 +158,38 @@ class OperationsController extends Controller
 
     public function viewCredentialFile(EmployeeCredential $credential): RedirectResponse
     {
+        $employeeName = $credential->employee?->full_name ?? 'Unknown Employee';
+
         if (! $credential->file_path) {
+            $this->logAudit('VIEW', 'Credentials', 'Failed to view credential file for '.$employeeName.'. No file was attached.', 'Failed', [
+                'credential_id' => $credential->id,
+            ]);
+
             return back()->with('error', 'No file was attached to this credential.');
         }
 
         if (! $this->storage->isEnabled()) {
+            $this->logAudit('VIEW', 'Credentials', 'Failed to view credential file for '.$employeeName.'. Storage is not configured.', 'Failed', [
+                'credential_id' => $credential->id,
+            ]);
+
             return back()->with('error', 'File storage is not configured. Please contact the administrator.');
         }
 
         $url = $this->storage->createSignedUrl($credential->file_path, 300);
 
         if (! $url) {
+            $this->logAudit('VIEW', 'Credentials', 'Failed to view credential file for '.$employeeName.'.', 'Failed', [
+                'credential_id' => $credential->id,
+            ]);
+
             return back()->with('error', 'Unable to generate a download link. Please try again.');
         }
+
+        $this->logAudit('VIEW', 'Credentials', 'Viewed credential file for '.$employeeName.'.', 'Success', [
+            'credential_id' => $credential->id,
+            'title' => $credential->title,
+        ]);
 
         return redirect()->away($url);
     }
@@ -185,14 +205,23 @@ class OperationsController extends Controller
 
         $credential->update($validated);
 
+        $this->logAudit(
+            'UPDATE',
+            'Credentials',
+            'Updated credential for '.($credential->employee?->full_name ?? 'Unknown Employee').'.',
+            'Success',
+            ['credential_id' => $credential->id, 'title' => $credential->title, 'fields' => array_keys($validated)]
+        );
+
         return redirect()->route('admin.credentials.index')
             ->with('success', 'Credential updated successfully.');
     }
 
     public function deleteCredential(EmployeeCredential $credential): RedirectResponse
     {
-        $employeeId = $credential->employee_id;
         $employeeName = $credential->employee?->full_name ?? 'Unknown Employee';
+        $credentialTitle = $credential->title;
+        $credentialId = $credential->id;
 
         // Delete file from storage if exists
         if (!empty($credential->file_path) && $this->storage->isEnabled()) {
@@ -201,12 +230,19 @@ class OperationsController extends Controller
 
         $credential->forceDelete();
 
+        $this->logAudit('DELETE', 'Credentials', "Deleted credential for {$employeeName}.", 'Success', [
+            'credential_id' => $credentialId,
+            'title' => $credentialTitle,
+        ]);
+
         return redirect()->route('admin.credentials.index')
             ->with('success', "Credential deleted for {$employeeName}.");
     }
 
     public function clearAllCredentials(): RedirectResponse
     {
+        $count = EmployeeCredential::query()->count();
+
         DB::transaction(function () {
             $credentials = EmployeeCredential::all();
             foreach ($credentials as $credential) {
@@ -216,6 +252,10 @@ class OperationsController extends Controller
             }
             EmployeeCredential::query()->forceDelete();
         });
+
+        $this->logAudit('DELETE', 'Credentials', "Cleared {$count} credential record(s).", 'Success', [
+            'count' => $count,
+        ]);
 
         return redirect()->route('admin.credentials.index')
             ->with('success', 'All credentials have been cleared.');
@@ -384,6 +424,11 @@ class OperationsController extends Controller
 
         $filename = 'DTR_' . str_replace(' ', '_', $employee?->full_name ?? 'Employee') . '_' . $selectedDate->format('F_Y') . '.pdf';
 
+        $this->logAudit('EXPORT', 'DTR', 'Exported DTR PDF for '.($employee?->full_name ?? 'Employee').' ('.$selectedDate->format('F Y').').', 'Success', [
+            'employee_id' => $employee?->employee_id,
+            'period' => $selectedDate->format('Y-m'),
+        ]);
+
         return $pdf->download($filename);
     }
 
@@ -436,6 +481,11 @@ class OperationsController extends Controller
         $filename = 'DTR_' . str_replace(' ', '_', $employee?->full_name ?? 'Employee') . '_' . $selectedDate->format('F_Y') . '.xlsx';
         $writer = new Xlsx($spreadsheet);
 
+        $this->logAudit('EXPORT', 'DTR', 'Exported DTR Excel for '.($employee?->full_name ?? 'Employee').' ('.$selectedDate->format('F Y').').', 'Success', [
+            'employee_id' => $employee?->employee_id,
+            'period' => $selectedDate->format('Y-m'),
+        ]);
+
         return response()->streamDownload(function () use ($writer) {
             $writer->save('php://output');
         }, $filename, [
@@ -465,6 +515,8 @@ class OperationsController extends Controller
             $records = $this->parseBiometricText($text);
 
             if (empty($records)) {
+                $this->logAudit('CREATE', 'DTR', 'Failed to import biometric PDF. No attendance rows were detected.', 'Failed');
+
                 return back()->with('error', 'No attendance rows were detected in the PDF. Make sure you uploaded a biometric "Timesheet Report" and not a different document.');
             }
 
@@ -582,6 +634,11 @@ class OperationsController extends Controller
                 $redirect = $redirect->with('applied_employees', array_keys($appliedEmployees));
             }
 
+            $this->logAudit('CREATE', 'DTR', $message, 'Success', [
+                'imported' => $imported,
+                'skipped' => $skipped,
+            ]);
+
             return $redirect->with('import_stats', [
                 'imported' => $imported,
                 'skipped' => $skipped,
@@ -589,6 +646,8 @@ class OperationsController extends Controller
             ])->with('success', $message);
         } catch (\Throwable $e) {
             report($e);
+            $this->logAudit('CREATE', 'DTR', 'Failed to process biometric PDF.', 'Failed');
+
             return back()->with('error', 'Failed to process biometric PDF. Please verify the file format and try again.');
         }
     }
@@ -956,6 +1015,12 @@ class OperationsController extends Controller
                 'undertime_minutes' => 0,
                 'status' => 'absent',
             ]);
+
+            $employeeName = $record->employee?->full_name ?? 'employee #'.$validated['employee_id'];
+            $this->logAudit('CREATE', 'DTR', 'Created DTR record for '.$employeeName.' on '.$validated['record_date'].'.', 'Success', [
+                'attendance_record_id' => $record->id,
+                'record_date' => $validated['record_date'],
+            ]);
         } else {
             $record = AttendanceRecord::query()
                 ->where('employee_id', $validated['employee_id'])
@@ -1013,6 +1078,14 @@ class OperationsController extends Controller
 
         $record->update($payload);
 
+        $this->logAudit(
+            'UPDATE',
+            'DTR',
+            'Updated DTR record for '.($record->employee?->full_name ?? 'an employee').' on '.$record->record_date?->toDateString().'.',
+            'Success',
+            ['attendance_record_id' => $record->id, 'record_date' => $record->record_date?->toDateString()]
+        );
+
         return redirect()->route('admin.dtr.index')
             ->with('success', 'DTR record updated successfully.');
     }
@@ -1025,6 +1098,13 @@ class OperationsController extends Controller
             ->where('employee_id', $employee->id)
             ->whereBetween('record_date', [$dateFrom->toDateString(), $dateTo->toDateString()])
             ->delete();
+
+        $this->logAudit('DELETE', 'DTR', "Cleared {$deleted} DTR record(s) for {$employee->full_name}.", 'Success', [
+            'employee_id' => $employee->employee_id,
+            'from' => $dateFrom->toDateString(),
+            'to' => $dateTo->toDateString(),
+            'deleted' => $deleted,
+        ]);
 
         return redirect()->route('admin.dtr.index', [
             'employee_id' => $employee->id,
@@ -1042,6 +1122,12 @@ class OperationsController extends Controller
         $deleted = AttendanceRecord::query()
             ->whereBetween('record_date', [$dateFrom->toDateString(), $dateTo->toDateString()])
             ->delete();
+
+        $this->logAudit('DELETE', 'DTR', "Cleared {$deleted} DTR record(s) for the selected period.", 'Success', [
+            'from' => $dateFrom->toDateString(),
+            'to' => $dateTo->toDateString(),
+            'deleted' => $deleted,
+        ]);
 
         return redirect()->route('admin.dtr.index', [
             'month' => $dateFrom->month,
@@ -1172,25 +1258,47 @@ class OperationsController extends Controller
             ->where('schedule_status', 'wfh')
             ->delete();
 
+        $this->logAudit('DELETE', 'WFH Monitoring', "Cleared {$count} WFH record(s).", 'Success', [
+            'count' => $count,
+        ]);
+
         return redirect()->route('admin.wfh-monitoring.index')
             ->with('success', "Cleared {$count} WFH records and corresponding attendance.");
     }
 
     public function viewWfhFile(WfhMonitoringSubmission $submission): RedirectResponse
     {
+        $employeeName = $submission->employee?->full_name ?? 'Unknown Employee';
+
         if (! $submission->file_path) {
+            $this->logAudit('VIEW', 'WFH Monitoring', 'Failed to view WFH file for '.$employeeName.'. No file was attached.', 'Failed', [
+                'submission_id' => $submission->id,
+            ]);
+
             return back()->with('error', 'No file was attached to this WFH submission.');
         }
 
         if (! $this->storage->isEnabled()) {
+            $this->logAudit('VIEW', 'WFH Monitoring', 'Failed to view WFH file for '.$employeeName.'. Storage is not configured.', 'Failed', [
+                'submission_id' => $submission->id,
+            ]);
+
             return back()->with('error', 'File storage is not configured. Please contact the administrator.');
         }
 
         $url = $this->storage->createSignedUrl($submission->file_path, 300);
 
         if (! $url) {
+            $this->logAudit('VIEW', 'WFH Monitoring', 'Failed to view WFH file for '.$employeeName.'.', 'Failed', [
+                'submission_id' => $submission->id,
+            ]);
+
             return back()->with('error', 'Unable to generate a download link. Please try again.');
         }
+
+        $this->logAudit('VIEW', 'WFH Monitoring', 'Viewed WFH file for '.$employeeName.'.', 'Success', [
+            'submission_id' => $submission->id,
+        ]);
 
         return redirect()->away($url);
     }
@@ -1206,6 +1314,11 @@ class OperationsController extends Controller
 
         $submission->forceDelete();
 
+        $this->logAudit('DELETE', 'WFH Monitoring', "Deleted WFH submission for {$employeeName} on {$wfhDate}.", 'Success', [
+            'employee' => $employeeName,
+            'wfh_date' => $wfhDate,
+        ]);
+
         return redirect()->route('admin.wfh-monitoring.index')
             ->with('success', "WFH submission deleted for {$employeeName} on {$wfhDate}.");
     }
@@ -1218,6 +1331,10 @@ class OperationsController extends Controller
         ]);
 
         if ($submission->status === WfhMonitoringSubmission::STATUS_APPROVED) {
+            $this->logAudit('APPROVE', 'WFH Monitoring', 'Failed to approve WFH submission. It is already approved.', 'Failed', [
+                'submission_id' => $submission->id,
+            ]);
+
             return back()->with('error', 'This WFH submission is already approved.');
         }
 
@@ -1290,6 +1407,14 @@ class OperationsController extends Controller
             }
         });
 
+        $this->logAudit(
+            'APPROVE',
+            'WFH Monitoring',
+            'Approved WFH submission for '.($submission->employee?->full_name ?? 'an employee').' on '.($submission->wfh_date?->format('M d, Y') ?? 'an unknown date').'.',
+            'Success',
+            ['submission_id' => $submission->id]
+        );
+
         return back()->with('success', 'WFH submission approved and attendance was updated.');
     }
 
@@ -1301,6 +1426,10 @@ class OperationsController extends Controller
         ]);
 
         if ($submission->status === WfhMonitoringSubmission::STATUS_DECLINED) {
+            $this->logAudit('DECLINE', 'WFH Monitoring', 'Failed to decline WFH submission. It is already declined.', 'Failed', [
+                'submission_id' => $submission->id,
+            ]);
+
             return back()->with('error', 'This WFH submission is already declined.');
         }
 
@@ -1336,6 +1465,14 @@ class OperationsController extends Controller
                 'redirect_url' => route('employee.wfh-monitoring.index'),
             ]);
         }
+
+        $this->logAudit(
+            'DECLINE',
+            'WFH Monitoring',
+            'Declined WFH submission for '.($submission->employee?->full_name ?? 'an employee').' on '.($submission->wfh_date?->format('M d, Y') ?? 'an unknown date').'.',
+            'Success',
+            ['submission_id' => $submission->id]
+        );
 
         return back()->with('success', 'WFH submission declined. The employee has been notified.');
     }
@@ -1526,6 +1663,10 @@ class OperationsController extends Controller
             }
         });
 
+        $this->logAudit('RESET', 'Leave Management', "Reset used leave balances for {$resetCount} employee(s).", 'Success', [
+            'count' => $resetCount,
+        ]);
+
         return redirect()->route('admin.leave.index')
             ->with('success', "Used leave balances have been reset for {$resetCount} employee(s). Leave credits remain intact.");
     }
@@ -1538,6 +1679,10 @@ class OperationsController extends Controller
             // Reset used leave balance - sets remaining to full credits
             $leaveBalanceService->resetUsedLeaveBalance($employee);
         });
+
+        $this->logAudit('RESET', 'Leave Management', "Reset used leave balance for {$employee->full_name}.", 'Success', [
+            'employee_id' => $employee->employee_id,
+        ]);
 
         return redirect()->route('admin.leave.index')
             ->with('success', "Used leave balance has been reset for {$employee->full_name}. Leave credits remain intact.");
@@ -1561,10 +1706,14 @@ class OperationsController extends Controller
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray(null, true, true, false);
         } catch (\Throwable $exception) {
+            $this->logAudit('CREATE', 'Leave Management', 'Failed to read leave Excel file.', 'Failed');
+
             return back()->with('error', 'Unable to read the Excel file: '.$exception->getMessage());
         }
 
         if (empty($rows) || count($rows) < 2) {
+            $this->logAudit('CREATE', 'Leave Management', 'Failed to import leave file. No data rows were found.', 'Failed');
+
             return back()->with('error', 'The Excel file does not contain any data rows.');
         }
 
@@ -1578,6 +1727,10 @@ class OperationsController extends Controller
         $missingColumns = array_keys(array_filter($columnIndex, fn ($idx) => $idx === null));
 
         if (! empty($missingColumns)) {
+            $this->logAudit('CREATE', 'Leave Management', 'Failed to import leave file. Expected columns were missing.', 'Failed', [
+                'missing_columns' => $missingColumns,
+            ]);
+
             return back()->with('error', 'Missing expected column(s) in the Excel header: '.implode(', ', $missingColumns).'. Expected headers: Leave ID, Employee ID, Employee Name, Application, Type, Date Filed, Date From, Date To, Total Hours, Status.');
         }
 
@@ -1739,6 +1892,12 @@ class OperationsController extends Controller
         }
         $message .= '.';
 
+        $this->logAudit('CREATE', 'Leave Management', $message, 'Success', [
+            'imported' => $imported,
+            'updated' => $updated,
+            'skipped' => $skipped,
+        ]);
+
         return back()
             ->with('success', $message)
             ->with('unmatched_employees', array_keys($unmatched))
@@ -1748,6 +1907,11 @@ class OperationsController extends Controller
                 'skipped' => $skipped,
                 'total_records' => count($dataRows),
             ]);
+    }
+
+    private function logAudit(string $action, string $module, string $description, string $status = 'Success', array $metadata = []): void
+    {
+        app(AuditLogService::class)->record($action, $module, $description, $status, $metadata);
     }
 
     private function normalizeEmployeeId(string $id): string

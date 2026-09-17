@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AuditLogService;
 use App\Services\SupabaseAuthSyncService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
@@ -63,6 +64,20 @@ class NewPasswordController extends Controller
         // If the password was successfully reset, we will redirect the user back to
         // the application's home authenticated view. If there is an error we can
         // redirect them back to where they came from with their error message.
+        $email = $request->string('email')->toString();
+        $user = User::query()->where('email', $email)->first();
+
+        app(AuditLogService::class)->record(
+            'RESET',
+            'Authentication',
+            $status == Password::PASSWORD_RESET
+                ? 'Password reset completed for '.$email.'.'
+                : 'Password reset failed for '.$email.'.',
+            $status == Password::PASSWORD_RESET ? 'Success' : 'Failed',
+            ['email' => $email],
+            $user?->id
+        );
+
         return $status == Password::PASSWORD_RESET
                     ? redirect()->route('login')->with('status', __($status))
                     : back()->withInput($request->only('email'))

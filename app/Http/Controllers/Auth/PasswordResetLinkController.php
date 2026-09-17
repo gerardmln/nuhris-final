@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
@@ -35,6 +37,20 @@ class PasswordResetLinkController extends Controller
         // need to show to the user. Finally, we'll send out a proper response.
         $status = Password::sendResetLink(
             $request->only('email')
+        );
+
+        $email = $request->string('email')->toString();
+        $user = User::query()->where('email', $email)->first();
+
+        app(AuditLogService::class)->record(
+            'RESET',
+            'Authentication',
+            $status == Password::RESET_LINK_SENT
+                ? 'Password reset link requested for '.$email.'.'
+                : 'Password reset link request failed for '.$email.'.',
+            $status == Password::RESET_LINK_SENT ? 'Success' : 'Failed',
+            ['email' => $email],
+            $user?->id
         );
 
         return $status == Password::RESET_LINK_SENT

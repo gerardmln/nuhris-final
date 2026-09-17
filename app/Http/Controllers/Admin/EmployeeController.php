@@ -9,6 +9,7 @@ use App\Mail\EmployeeCredentialsMail;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\User;
+use App\Services\AuditLogService;
 use App\Services\SupabaseAuthSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,6 +40,14 @@ class EmployeeController extends Controller
         try {
             $employee = Employee::create($payload);
         } catch (\Illuminate\Database\UniqueConstraintViolationException $exception) {
+            app(AuditLogService::class)->record(
+                'CREATE',
+                'Employees',
+                'Failed to create employee. The employee ID or email already exists.',
+                'Failed',
+                ['employee_id' => $payload['employee_id'] ?? null, 'email' => $payload['email'] ?? null]
+            );
+
             return back()
                 ->withInput()
                 ->with('error', 'Failed to create employee. The employee ID or email already exists.');
@@ -46,6 +55,18 @@ class EmployeeController extends Controller
 
         [$tempPassword] = $this->provisionEmployeeAccount($employee);
         $emailStatus = $this->sendCredentialsEmail($employee, $tempPassword, isResend: false);
+
+        app(AuditLogService::class)->record(
+            'CREATE',
+            'Employees',
+            'Created employee '.$employee->full_name.' ('.$employee->employee_id.').',
+            'Success',
+            [
+                'employee_id' => $employee->employee_id,
+                'email' => $employee->email,
+                'credentials_email_sent' => $emailStatus['sent'],
+            ]
+        );
 
         return redirect()
             ->route('admin.employees.index')
@@ -149,6 +170,17 @@ class EmployeeController extends Controller
             app(SupabaseAuthSyncService::class)->syncUser($user, null);
         }
 
+        app(AuditLogService::class)->record(
+            'UPDATE',
+            'Employees',
+            'Updated employee '.$employee->full_name.' ('.$employee->employee_id.').',
+            'Success',
+            [
+                'employee_id' => $employee->employee_id,
+                'fields' => array_keys($payload),
+            ]
+        );
+
         return redirect()->route('admin.employees.index')->with('success', 'Employee updated successfully.');
     }
 
@@ -156,6 +188,7 @@ class EmployeeController extends Controller
     {
         $fullName = $employee->full_name;
         $email = $employee->email;
+        $employeeCode = $employee->employee_id;
 
         try {
             DB::transaction(function () use ($employee, $email) {
@@ -171,8 +204,24 @@ class EmployeeController extends Controller
         } catch (\Throwable $exception) {
             Log::error('Failed to delete employee (admin)', ['employee_id' => $employee->id, 'error' => $exception->getMessage()]);
 
+            app(AuditLogService::class)->record(
+                'DELETE',
+                'Employees',
+                'Failed to delete employee '.$fullName.'.',
+                'Failed',
+                ['employee_id' => $employeeCode, 'email' => $email]
+            );
+
             return redirect()->route('admin.employees.index')->with('error', 'Failed to delete '.$fullName.': '.$exception->getMessage());
         }
+
+        app(AuditLogService::class)->record(
+            'DELETE',
+            'Employees',
+            'Deleted employee '.$fullName.' ('.$employeeCode.').',
+            'Success',
+            ['employee_id' => $employeeCode, 'email' => $email]
+        );
 
         return redirect()->route('admin.employees.index')->with('success', $fullName.' deleted.');
     }
@@ -181,6 +230,18 @@ class EmployeeController extends Controller
     {
         [$tempPassword] = $this->provisionEmployeeAccount($employee, forceReset: true);
         $emailStatus = $this->sendCredentialsEmail($employee, $tempPassword, isResend: true);
+
+        app(AuditLogService::class)->record(
+            'RESET',
+            'Employees',
+            'Regenerated login credentials for '.$employee->full_name.' ('.$employee->employee_id.').',
+            'Success',
+            [
+                'employee_id' => $employee->employee_id,
+                'email' => $employee->email,
+                'credentials_email_sent' => $emailStatus['sent'],
+            ]
+        );
 
         return redirect()->route('admin.employees.index')->with('success', 'Credentials regenerated for '.$employee->full_name)->with('credential_notice', [
             'employee_name' => $employee->full_name,

@@ -30,4 +30,18 @@ class AdminAuditLog extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function roleLabel(): string
+    {
+        if (! $this->user) {
+            return 'System';
+        }
+
+        return match ((int) $this->user->user_type) {
+            User::TYPE_ADMIN => 'Admin',
+            User::TYPE_HR => 'HR Personnel',
+            User::TYPE_EMPLOYEE => 'Employee',
+            default => 'System',
+        };
+    }
 }

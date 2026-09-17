@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\Employee;
 use App\Models\EmployeeScheduleSubmission;
 use App\Models\User;
+use App\Services\AuditLogService;
 use App\Services\EmployeeScheduleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -117,6 +118,14 @@ class ScheduleManagementController extends Controller
             ->get();
 
         if ($submissions->isEmpty()) {
+            app(AuditLogService::class)->record(
+                'RESET',
+                'Schedules',
+                'Failed to reset schedule for '.$employee->full_name.'. No submissions were found.',
+                'Failed',
+                ['employee_id' => $employee->employee_id]
+            );
+
             return back()->with('error', 'This employee has no schedule submissions to reset.');
         }
 
@@ -130,6 +139,14 @@ class ScheduleManagementController extends Controller
                 'is_current' => false,
             ]);
         }
+
+        app(AuditLogService::class)->record(
+            'RESET',
+            'Schedules',
+            'Reset schedule for '.$employee->full_name.'.',
+            'Success',
+            ['employee_id' => $employee->employee_id, 'submissions' => $submissions->count()]
+        );
 
         return redirect()->route('admin.schedules.index')
             ->with('success', $employee->full_name.' schedule was reset successfully.');
@@ -156,6 +173,14 @@ class ScheduleManagementController extends Controller
             ->whereKeyNot($submission->id)
             ->update(['is_current' => false]);
 
+        app(AuditLogService::class)->record(
+            'APPROVE',
+            'Schedules',
+            'Approved schedule for '.($submission->employee?->full_name ?? 'an employee').'.',
+            'Success',
+            ['submission_id' => $submission->id, 'employee_id' => $submission->employee?->employee_id]
+        );
+
         return redirect()->route('admin.schedules.index')
             ->with('success', 'Schedule for '.$submission->employee?->full_name.' has been approved.');
     }
@@ -175,6 +200,13 @@ class ScheduleManagementController extends Controller
                 $submission->days()->delete();
             });
         });
+
+        app(AuditLogService::class)->record(
+            'RESET',
+            'Schedules',
+            'Reset all employee schedules.',
+            'Success'
+        );
 
         return redirect()->route('admin.schedules.index')
             ->with('success', 'All schedules were reset. Employees must resubmit before DTR validation resumes.');
@@ -244,6 +276,14 @@ class ScheduleManagementController extends Controller
             sprintf('Your weekly schedule for term "%s" was updated by the administrator. Please check your schedule.', $termLabel)
         );
 
+        app(AuditLogService::class)->record(
+            'UPDATE',
+            'Schedules',
+            'Updated schedule for '.($submission->employee?->full_name ?? 'an employee').'.',
+            'Success',
+            ['submission_id' => $submission->id, 'employee_id' => $submission->employee?->employee_id]
+        );
+
         return redirect()->route('admin.schedules.index')
             ->with('success', 'Schedule for '.$submission->employee?->full_name.' has been updated. Employee has been notified.');
     }
@@ -269,6 +309,14 @@ class ScheduleManagementController extends Controller
             $submission,
             'Schedule cleared',
             sprintf('Your weekly schedule for term "%s" was cleared by the administrator. Please resubmit a revised schedule.', $termLabel)
+        );
+
+        app(AuditLogService::class)->record(
+            'DELETE',
+            'Schedules',
+            'Cleared schedule for '.($submission->employee?->full_name ?? 'an employee').'.',
+            'Success',
+            ['submission_id' => $submission->id, 'employee_id' => $submission->employee?->employee_id]
         );
 
         return redirect()->route('admin.schedules.index')

@@ -9,6 +9,7 @@ use App\Models\Announcement;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -261,29 +262,84 @@ class PortalController extends Controller
         ]);
     }
 
-    public function auditLogs(): View
+    public function auditLogs(Request $request): View
     {
-        $auditLogs = AdminAuditLog::query()
+        $search = $request->string('search')->trim()->toString();
+        $action = strtoupper($request->string('action')->toString());
+        $module = $request->string('module')->toString();
+        $role = $request->string('role')->toString();
+
+        $logs = AdminAuditLog::query()
             ->with('user')
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($nested) use ($search) {
+                    $nested->where('description', 'like', '%'.$search.'%')
+                        ->orWhere('module', 'like', '%'.$search.'%')
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('name', 'like', '%'.$search.'%')
+                                ->orWhere('email', 'like', '%'.$search.'%');
+                        });
+                });
+            })
+            ->when($action !== '', fn ($query) => $query->whereRaw('lower(action) = ?', [strtolower($action)]))
+            ->when($module !== '', fn ($query) => $query->where('module', $module))
+            ->when($role === 'system', fn ($query) => $query->whereNull('user_id'))
+            ->when(in_array($role, ['admin', 'hr', 'employee'], true), function ($query) use ($role) {
+                $userType = match ($role) {
+                    'admin' => User::TYPE_ADMIN,
+                    'hr' => User::TYPE_HR,
+                    default => User::TYPE_EMPLOYEE,
+                };
+
+                $query->whereHas('user', fn ($userQuery) => $userQuery->where('user_type', $userType));
+            })
             ->latest()
-            ->limit(20)
-            ->get()
-            ->map(fn (AdminAuditLog $log) => [
-                'timestamp' => $log->created_at->format('Y-m-d H:i:s'),
-                'user' => $log->user?->name ?? 'System',
-                'action' => strtoupper($log->action),
-                'module' => $log->module,
-                'description' => $log->description,
-                'status' => $log->status,
-            ]);
+            ->paginate(20)
+            ->withQueryString();
+
+        $knownModules = [
+            'Academic Calendar',
+            'API Integrations',
+            'Authentication',
+            'Credentials',
+            'Cut-off Schedules',
+            'Data Validation',
+            'DTR',
+            'Employees',
+            'Leave Management',
+            'Leave Rules',
+            'Notification Templates',
+            'RBAC',
+            'Role Assignment',
+            'Role Management',
+            'Schedules',
+            'User Accounts',
+            'WFH Monitoring',
+        ];
+
+        $modules = collect($knownModules)
+            ->merge(AdminAuditLog::query()->distinct()->orderBy('module')->pluck('module'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
+        $today = AdminAuditLog::query()->whereDate('created_at', today());
 
         return view('admin.audit-logs', [
-            'logs' => $auditLogs,
+            'logs' => $logs,
+            'modules' => $modules,
+            'filters' => [
+                'search' => $search,
+                'action' => $action,
+                'module' => $module,
+                'role' => $role,
+            ],
             'stats' => [
-                'total' => AdminAuditLog::query()->whereDate('created_at', today())->count(),
-                'success' => AdminAuditLog::query()->whereDate('created_at', today())->where('status', 'Success')->count(),
-                'failed' => AdminAuditLog::query()->whereDate('created_at', today())->where('status', 'Failed')->count(),
-                'active_users' => User::query()->count(),
+                'total' => (clone $today)->count(),
+                'success' => (clone $today)->where('status', 'Success')->count(),
+                'failed' => (clone $today)->where('status', 'Failed')->count(),
+                'active_users' => (clone $today)->whereNotNull('user_id')->distinct()->count('user_id'),
             ],
         ]);
     }
@@ -655,13 +711,13 @@ class PortalController extends Controller
 
     private function logAction(Request $request, string $action, string $module, string $description, array $metadata = []): void
     {
-        AdminAuditLog::query()->create([
-            'user_id' => $request->user()?->id,
-            'action' => $action,
-            'module' => $module,
-            'description' => $description,
-            'status' => 'Success',
-            'metadata' => $metadata,
-        ]);
+        app(AuditLogService::class)->record(
+            $action,
+            $module,
+            $description,
+            'Success',
+            $metadata,
+            $request->user()?->id
+        );
     }
 }

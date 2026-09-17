@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicCalendarEntry;
+use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -50,7 +51,15 @@ class AcademicCalendarController extends Controller
     {
         $validated = $this->validateEntry($request);
 
-        AcademicCalendarEntry::query()->create($validated);
+        $entry = AcademicCalendarEntry::query()->create($validated);
+
+        app(AuditLogService::class)->record(
+            'CREATE',
+            'Academic Calendar',
+            'Added calendar date: '.$entry->title.' ('.$entry->event_date->toDateString().').',
+            'Success',
+            ['entry_id' => $entry->id, 'event_date' => $entry->event_date->toDateString()]
+        );
 
         return redirect()->route('admin.academic-calendar.index')
             ->with('success', 'Academic calendar date added successfully.');
@@ -62,13 +71,33 @@ class AcademicCalendarController extends Controller
 
         $academicCalendarEntry->update($validated);
 
+        app(AuditLogService::class)->record(
+            'UPDATE',
+            'Academic Calendar',
+            'Updated calendar date: '.$academicCalendarEntry->title.' ('.$academicCalendarEntry->event_date->toDateString().').',
+            'Success',
+            ['entry_id' => $academicCalendarEntry->id, 'event_date' => $academicCalendarEntry->event_date->toDateString()]
+        );
+
         return redirect()->route('admin.academic-calendar.index')
             ->with('success', 'Academic calendar date updated successfully.');
     }
 
     public function destroy(AcademicCalendarEntry $academicCalendarEntry): RedirectResponse
     {
+        $title = $academicCalendarEntry->title;
+        $eventDate = $academicCalendarEntry->event_date->toDateString();
+        $entryId = $academicCalendarEntry->id;
+
         $academicCalendarEntry->delete();
+
+        app(AuditLogService::class)->record(
+            'DELETE',
+            'Academic Calendar',
+            'Deleted calendar date: '.$title.' ('.$eventDate.').',
+            'Success',
+            ['entry_id' => $entryId, 'event_date' => $eventDate]
+        );
 
         return redirect()->route('admin.academic-calendar.index')
             ->with('success', 'Academic calendar date deleted successfully.');

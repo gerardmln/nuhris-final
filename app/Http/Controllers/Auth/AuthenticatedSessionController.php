@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,14 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        app(AuditLogService::class)->record(
+            'LOGIN',
+            'Authentication',
+            'Logged in as '.$request->user()->email.'.',
+            'Success',
+            ['email' => $request->user()->email]
+        );
+
         $targetRoute = match ((int) $request->user()->user_type) {
             User::TYPE_ADMIN => 'admin.dashboard',
             User::TYPE_HR => 'dashboard',
@@ -43,6 +52,19 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $user = $request->user();
+
+        if ($user) {
+            app(AuditLogService::class)->record(
+                'LOGOUT',
+                'Authentication',
+                'Logged out '.$user->email.'.',
+                'Success',
+                ['email' => $user->email],
+                $user->id
+            );
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

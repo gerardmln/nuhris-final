@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -89,6 +90,14 @@ class RoleManagementController extends Controller
         if ($validated['user_type'] !== User::TYPE_ADMIN && $user->user_type === User::TYPE_ADMIN) {
             $adminCount = User::query()->where('user_type', User::TYPE_ADMIN)->count();
             if ($adminCount <= 1) {
+                app(AuditLogService::class)->record(
+                    'UPDATE',
+                    'Role Management',
+                    'Blocked role change for '.$user->email.' because they are the last Admin.',
+                    'Failed',
+                    ['user_id' => $user->id, 'email' => $user->email]
+                );
+
                 return redirect()->back()
                     ->with('error', 'Cannot remove the last Admin user. At least one Admin must exist.');
             }
@@ -98,6 +107,14 @@ class RoleManagementController extends Controller
         $newRole = $this->roleLabel($validated['user_type']);
 
         $user->update($validated);
+
+        app(AuditLogService::class)->record(
+            'UPDATE',
+            'Role Management',
+            sprintf('Updated %s role from %s to %s.', $user->email, $oldRole, $newRole),
+            'Success',
+            ['user_id' => $user->id, 'email' => $user->email, 'from' => $oldRole, 'to' => $newRole]
+        );
 
         return redirect()->route('admin.roles.index')
             ->with('success', "{$user->name}'s role has been changed from {$oldRole} to {$newRole}.");
