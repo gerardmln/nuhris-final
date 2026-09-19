@@ -149,7 +149,22 @@
     </div>
 
     <article class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm">
-        <h2 class="text-3xl font-bold text-slate-900">Daily Time Records</h2>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="text-3xl font-bold text-slate-900">Daily Time Records</h2>
+                <p class="mt-1 text-sm text-slate-500">Showing {{ \Carbon\Carbon::create($selectedYear, $selectedMonth, 1)->format('F Y') }}</p>
+            </div>
+            <form method="GET" action="{{ route('employee.attendance') }}" class="flex items-center gap-2">
+                <label for="attendance-period" class="text-sm font-semibold text-slate-700">Month</label>
+                <select id="attendance-period" name="period" onchange="this.form.querySelector('[name=month]').value=this.value.split('-')[0]; this.form.querySelector('[name=year]').value=this.value.split('-')[1]; this.form.submit()" class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-400 focus:outline-none">
+                    @foreach ($periods as $period)
+                        <option value="{{ $period['month'] }}-{{ $period['year'] }}" @selected($period['selected'])>{{ $period['label'] }}</option>
+                    @endforeach
+                </select>
+                <input type="hidden" name="month" value="{{ $selectedMonth }}">
+                <input type="hidden" name="year" value="{{ $selectedYear }}">
+            </form>
+        </div>
 
         <div class="mt-4 overflow-x-auto">
             <table class="min-w-full text-left text-sm">

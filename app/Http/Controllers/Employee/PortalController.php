@@ -395,6 +395,19 @@ class PortalController extends Controller
             $request->integer('month', now()->month),
             1
         );
+        $currentMonth = now()->startOfMonth();
+        $periods = collect();
+
+        if ($currentMonth->gte($systemStart->copy()->startOfMonth())) {
+            for ($period = $currentMonth->copy(); $period->gte($systemStart->copy()->startOfMonth()); $period->subMonth()) {
+                $periods->push([
+                    'label' => $period->format('F Y'),
+                    'month' => $period->month,
+                    'year' => $period->year,
+                    'selected' => $period->isSameMonth($selectedDate),
+                ]);
+            }
+        }
 
         $periodStart = $selectedDate->copy()->startOfMonth()->max($systemStart);
         $periodEnd = $selectedDate->isSameMonth(now())
@@ -506,6 +519,7 @@ class PortalController extends Controller
             'scheduleDayMap' => $scheduleDays,
             'canEditSchedule' => $canEditSchedule,
             'overallResult' => $overallResult,
+            'periods' => $periods,
             'selectedMonth' => $selectedDate->month,
             'selectedYear' => $selectedDate->year,
         ]);
