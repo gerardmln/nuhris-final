@@ -29,7 +29,7 @@
                     <p class="text-sm text-slate-500">Welcome back! Here is your HR overview.</p>
                 </div>
 
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     <article class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
                         <p class="text-xs font-medium text-slate-500">Total Employees</p>
                         <p class="mt-1 text-4xl font-extrabold">{{ $stats['total_employees'] }}</p>
@@ -37,10 +37,6 @@
                     <article class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
                         <p class="text-xs font-medium text-slate-500">Pending Credentials</p>
                         <p class="mt-1 text-4xl font-extrabold">{{ $stats['pending_credentials'] }}</p>
-                    </article>
-                    <article class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
-                        <p class="text-xs font-medium text-slate-500">Present Today</p>
-                        <p class="mt-1 text-4xl font-extrabold">{{ $stats['present_today'] }}</p>
                     </article>
                     <article class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
                         <p class="text-xs font-medium text-slate-500">Expiring Licenses</p>

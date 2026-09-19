@@ -19,7 +19,6 @@ class DashboardController extends Controller
     {
         $totalEmployees = Employee::count();
         $pendingCredentials = Employee::where('resume_last_updated_at', '<', now()->subMonths(6))->count();
-        $presentToday = Employee::where('status', 'active')->count();
         $expiringLicenses = 0;
 
 
@@ -113,7 +112,6 @@ class DashboardController extends Controller
         $stats = [
             'total_employees' => $totalEmployees,
             'pending_credentials' => $pendingCredentials,
-            'present_today' => $presentToday,
             'expiring_licenses' => $expiringLicenses,
         ];
 
