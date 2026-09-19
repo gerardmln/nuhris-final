@@ -86,28 +86,25 @@
                         </article>
 
                         <article class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
-                            <h3 class="mb-2 text-2xl font-bold text-slate-800">Records Overview</h3>
-                            <p class="mb-3 text-sm text-slate-500">Latest HR updates and metrics.</p>
+                            <div class="mb-2 flex items-center justify-between">
+                                <h3 class="text-2xl font-bold text-slate-800">Announcements</h3>
+                                <a href="{{ route('announcements.index') }}" class="text-sm font-semibold text-blue-700 hover:underline">View all</a>
+                            </div>
 
-                            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                    <p class="text-sm font-semibold text-slate-700">Onboarding Queue</p>
-                                    <p class="mt-2 text-3xl font-extrabold">3</p>
-                                </div>
-                                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                    <p class="text-sm font-semibold text-slate-700">Payroll Pending</p>
-                                    <p class="mt-2 text-3xl font-extrabold">2</p>
-                                </div>
-                                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                    <p class="text-sm font-semibold text-slate-700">Leaves for Approval</p>
-                                    <p class="mt-2 text-3xl font-extrabold">6</p>
-                                </div>
-                                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                    <p class="text-sm font-semibold text-slate-700">Policy Drafts</p>
-                                    <p class="mt-2 text-3xl font-extrabold">1</p>
-                                </div>
+                            <div class="space-y-3">
+                                @forelse($announcements as $announcement)
+                                    <div class="rounded-lg border border-slate-200 px-3 py-2">
+                                        <p class="text-sm font-semibold">{{ $announcement->title }}</p>
+                                        <p class="text-xs text-slate-500">{{ $announcement->published_at->format('M d, Y') }}</p>
+                                    </div>
+                                @empty
+                                    <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-4 text-center">
+                                        <p class="text-sm text-slate-500">No announcements yet</p>
+                                    </div>
+                                @endforelse
                             </div>
                         </article>
+
                     </div>
 
                     <div class="space-y-4">
@@ -144,25 +141,6 @@
                             </div>
                         </article>
 
-                        <article class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
-                            <div class="mb-2 flex items-center justify-between">
-                                <h3 class="text-2xl font-bold text-slate-800">Announcements</h3>
-                                <a href="{{ route('announcements.index') }}" class="text-sm font-semibold text-blue-700 hover:underline">View all</a>
-                            </div>
-
-                            <div class="space-y-3">
-                                @forelse($announcements as $announcement)
-                                    <div class="rounded-lg border border-slate-200 px-3 py-2">
-                                        <p class="text-sm font-semibold">{{ $announcement->title }}</p>
-                                        <p class="text-xs text-slate-500">{{ $announcement->published_at->format('M d, Y') }}</p>
-                                    </div>
-                                @empty
-                                    <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-4 text-center">
-                                        <p class="text-sm text-slate-500">No announcements yet</p>
-                                    </div>
-                                @endforelse
-                            </div>
-                        </article>
                     </div>
                 </div>
                 <div class="h-8"></div>
