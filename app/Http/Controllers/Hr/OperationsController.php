@@ -9,6 +9,7 @@ use App\Models\AttendanceRecord;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\EmployeeCredential;
+use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
 use App\Models\User;
 use App\Models\WfhMonitoringSubmission;
@@ -1056,6 +1057,27 @@ class OperationsController extends Controller
         $employeeUserIdsByEmail = User::query()
             ->whereIn('email', $allEmployees->pluck('email')->filter()->unique()->values())
             ->pluck('id', 'email');
+        $employeeIds = $allEmployees->pluck('id')->values();
+        $existingLeaveRequests = LeaveRequest::query()
+            ->whereIn('employee_id', $employeeIds)
+            ->get()
+            ->flatMap(function (LeaveRequest $leave): array {
+                $startDate = $leave->start_date?->toDateString();
+
+                if (! $startDate) {
+                    return [];
+                }
+
+                return [
+                    $leave->employee_id.'|'.$startDate.'|'.$leave->leave_type => $leave,
+                ];
+            });
+        $remainingBalances = LeaveBalance::query()
+            ->whereIn('employee_id', $employeeIds)
+            ->get()
+            ->mapWithKeys(fn (LeaveBalance $balance): array => [
+                $balance->employee_id.'|'.$balance->leave_type => (float) $balance->remaining_days,
+            ]);
         foreach ($allEmployees as $emp) {
             $byNormalizedId[$this->normalizeEmployeeId($emp->employee_id)] = $emp;
             $lastKey = mb_strtolower(trim((string) $emp->last_name));
@@ -1142,11 +1164,9 @@ class OperationsController extends Controller
                 'reason' => $reasonParts ? implode(' · ', $reasonParts) : null,
             ];
 
-            $existing = LeaveRequest::query()
-                ->where('employee_id', $employee->id)
-                ->whereDate('start_date', $startDate)
-                ->whereIn('leave_type', array_values(array_unique([$leaveType, $policy['storage_leave_type']])))
-                ->first();
+            $existing = collect(array_values(array_unique([$leaveType, $policy['storage_leave_type']])))->map(
+                fn (string $type) => $existingLeaveRequests->get($employee->id.'|'.$startDate.'|'.$type)
+            )->first();
 
             // Persist all imported leave rows so the Leave Monitoring module
             // can reflect every leave type (tracked or not). Previously,
@@ -1155,7 +1175,8 @@ class OperationsController extends Controller
                 $existing->update($attributes);
                 $updated++;
             } else {
-                LeaveRequest::create(array_merge(['employee_id' => $employee->id], $attributes));
+                $existing = LeaveRequest::create(array_merge(['employee_id' => $employee->id], $attributes));
+                $existingLeaveRequests->put($employee->id.'|'.$startDate.'|'.$policy['storage_leave_type'], $existing);
                 $imported++;
             }
 
@@ -1166,7 +1187,8 @@ class OperationsController extends Controller
                     Carbon::parse($startDate),
                     Carbon::parse($endDate),
                     $policy,
-                    $attributes['days_deducted'] ?? 0
+                    $attributes['days_deducted'] ?? 0,
+                    $remainingBalances
                 );
 
                 if ($isEligible && $policy['requires_wfh_submission']) {
@@ -1256,7 +1278,7 @@ class OperationsController extends Controller
      *
      * @param array<string, array<string, mixed>> $queuedAttendanceRows
      */
-    private function queueLeaveToDtrEntries(array &$queuedAttendanceRows, Employee $employee, Carbon $startDate, Carbon $endDate, array $policy, float $daysDeducted): void
+    private function queueLeaveToDtrEntries(array &$queuedAttendanceRows, Employee $employee, Carbon $startDate, Carbon $endDate, array $policy, float $daysDeducted, Collection $remainingBalances): void
     {
         // Do not auto-mark anything for leaves that require WFH submission here.
         if (! empty($policy['requires_wfh_submission'])) {
@@ -1272,11 +1294,15 @@ class OperationsController extends Controller
 
         $leaveBalanceService = app(LeaveBalanceService::class);
         $leaveMonitoring = app(LeaveMonitoringService::class);
+        $scheduleService = app(EmployeeScheduleService::class);
+        $submission = $scheduleService->approvedSubmissionForDate($employee, $periodStart);
         $isRegular = $leaveMonitoring->isRegularEmployee($employee, $periodStart);
         $storageType = $policy['storage_leave_type'] ?? '';
         $isDeductible = $leaveBalanceService->isDeductibleLeaveType($storageType);
 
-        $remainingBalance = $isDeductible ? $leaveBalanceService->getRemainingBalance($employee, $storageType) : null;
+        $remainingBalance = $isDeductible
+            ? ($remainingBalances->get($employee->id.'|'.$storageType, 0.0))
+            : null;
 
         // Determine how many days may be covered by leave credits.
         $allocatable = $isDeductible && $remainingBalance !== null ? min($remainingBalance, $daysDeducted) : $daysDeducted;
@@ -1284,6 +1310,11 @@ class OperationsController extends Controller
         foreach (CarbonPeriod::create($periodStart, $periodEnd) as $date) {
             $recordDate = $date->toDateString();
             $key = $employee->id.'|'.$recordDate;
+
+            $scheduleDay = $submission?->days->firstWhere('day_index', $date->dayOfWeekIso);
+            if ($scheduleDay && ! $scheduleDay->has_work) {
+                continue;
+            }
 
             if (isset($queuedAttendanceRows[$key])) {
                 continue;

@@ -233,6 +233,19 @@ class EmployeeScheduleService
             ];
         }
 
+        if ($submission && $scheduleDay && ! $scheduleDay->has_work && $academicDayType !== 'working') {
+            return [
+                'schedule_status' => 'non_working_day',
+                'schedule_notes' => 'Non-working day',
+                'scheduled_time_in' => null,
+                'scheduled_time_out' => null,
+                'tardiness_minutes' => 0,
+                'undertime_minutes' => 0,
+                'overtime_minutes' => 0,
+                'status' => $timeIn || $timeOut ? 'present' : 'absent',
+            ];
+        }
+
         $approvedLeave = $this->approvedLeaveForDate($employee, $date);
 
         if ($approvedLeave) {
