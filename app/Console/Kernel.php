@@ -10,9 +10,7 @@ class Kernel extends ConsoleKernel
 {
     protected function schedule(Schedule $schedule): void
     {
-        // Automatic leave balance reset is disabled.
-        // Leave balances are now managed manually via the Admin Leave Management interface.
-        // Use the "Reset All Used Leave" button to manually reset used leave balances.
+        $schedule->command('leaves:reset-annual')->dailyAt('00:05');
     }
 
     protected function commands(): void

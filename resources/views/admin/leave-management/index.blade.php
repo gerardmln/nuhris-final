@@ -13,21 +13,9 @@
             <p class="text-sm text-slate-500">Import leave applications (.xlsx) and view employee leave data</p>
         </div>
         <div class="flex items-center gap-2">
-            <button
-                type="button"
-                onclick="if(confirm('Reset the used leave balances for all employees? This will set all used leave counters to 0 (VL, SL, EL). Leave credits will remain intact.')) { document.getElementById('reset-all-leaves-form').submit(); }"
-                class="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
-            >
-                Reset All Used Leave
-            </button>
             <button data-open-modal="upload-leaves-modal" class="rounded-lg bg-[#00386f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f5d]">Upload Leave File</button>
         </div>
     </div>
-
-    <form id="reset-all-leaves-form" action="{{ route('admin.leave.clear-all') }}" method="POST" class="hidden">
-        @csrf
-        @method('DELETE')
-    </form>
 
     @if (session('unmatched_employees') || session('applied_employees'))
         @php

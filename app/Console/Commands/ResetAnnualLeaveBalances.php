@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use App\Models\Employee;
+use App\Services\LeaveBalanceService;
 
 class ResetAnnualLeaveBalances extends Command
 {
@@ -11,9 +13,23 @@ class ResetAnnualLeaveBalances extends Command
 
     public function handle(): int
     {
-        $this->info('Automatic leave balance reset is disabled.');
-        $this->info('Leave balances are now managed manually via the Admin Leave Management interface.');
-        $this->info('To reset used leave balances, use the "Reset All Used Leave" button in the Admin panel.');
+        $today = now();
+        $processed = 0;
+
+        Employee::query()
+            ->whereNotNull('hire_date')
+            ->each(function (Employee $employee) use ($today, &$processed): void {
+                $hireDate = $employee->hire_date;
+
+                if ($hireDate->month !== $today->month || $hireDate->day !== $today->day) {
+                    return;
+                }
+
+                app(LeaveBalanceService::class)->initializeOrUpdateBalance($employee);
+                $processed++;
+            });
+
+        $this->info("Refreshed leave balances for {$processed} employee anniversary(ies).");
 
         return self::SUCCESS;
     }

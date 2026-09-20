@@ -1649,45 +1649,6 @@ class OperationsController extends Controller
         ]);
     }
 
-    public function clearAllLeaves(): RedirectResponse
-    {
-        $leaveBalanceService = app(LeaveBalanceService::class);
-        $employees = Employee::all();
-        $resetCount = 0;
-
-        DB::transaction(function () use ($leaveBalanceService, $employees, &$resetCount) {
-            foreach ($employees as $employee) {
-                // Reset used leave balances - sets remaining to full credits
-                $leaveBalanceService->resetUsedLeaveBalance($employee);
-                $resetCount++;
-            }
-        });
-
-        $this->logAudit('RESET', 'Leave Management', "Reset used leave balances for {$resetCount} employee(s).", 'Success', [
-            'count' => $resetCount,
-        ]);
-
-        return redirect()->route('admin.leave.index')
-            ->with('success', "Used leave balances have been reset for {$resetCount} employee(s). Leave credits remain intact.");
-    }
-
-    public function resetEmployeeLeaves(Employee $employee): RedirectResponse
-    {
-        $leaveBalanceService = app(LeaveBalanceService::class);
-
-        DB::transaction(function () use ($leaveBalanceService, $employee) {
-            // Reset used leave balance - sets remaining to full credits
-            $leaveBalanceService->resetUsedLeaveBalance($employee);
-        });
-
-        $this->logAudit('RESET', 'Leave Management', "Reset used leave balance for {$employee->full_name}.", 'Success', [
-            'employee_id' => $employee->employee_id,
-        ]);
-
-        return redirect()->route('admin.leave.index')
-            ->with('success', "Used leave balance has been reset for {$employee->full_name}. Leave credits remain intact.");
-    }
-
     public function uploadLeaves(Request $request, LeaveMonitoringService $leaveMonitoringService): RedirectResponse
     {
         $validated = $request->validate([

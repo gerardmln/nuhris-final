@@ -14,10 +14,6 @@
             <p class="mt-1 text-4xl font-extrabold">{{ $stats['compliance_rate'] }}%</p>
         </article>
         <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">Attendance Rate</p>
-            <p class="mt-1 text-4xl font-extrabold">{{ $stats['attendance_rate'] }}%</p>
-        </article>
-        <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
             <p class="text-xs font-medium text-slate-500">Expiring PRC</p>
             <p class="mt-1 text-4xl font-extrabold">{{ $stats['expiring_prc'] }}</p>
         </article>
@@ -72,7 +68,7 @@
                 <h2 class="mb-2 text-2xl font-bold text-slate-800">Records Overview</h2>
                 <p class="mb-3 text-sm text-slate-500">Current administrative records and activity.</p>
 
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
                     @foreach ($recordsOverview as $record)
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                             <p class="text-sm font-semibold text-slate-700">{{ $record['label'] }}</p>

@@ -274,8 +274,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1'])->gro
     Route::prefix('leave-management')->name('leave.')->group(function () {
         Route::get('/', [AdminOperationsController::class, 'leaveIndex'])->name('index');
         Route::post('/upload', [AdminOperationsController::class, 'uploadLeaves'])->name('upload');
-        Route::delete('/', [AdminOperationsController::class, 'clearAllLeaves'])->name('clear-all');
-        Route::delete('/employee/{employee}', [AdminOperationsController::class, 'resetEmployeeLeaves'])->whereNumber('employee')->name('reset-employee');
     });
 
     // ========== SCHEDULE MANAGEMENT (ADMIN-ONLY) ==========

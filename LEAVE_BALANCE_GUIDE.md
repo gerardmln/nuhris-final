@@ -261,8 +261,9 @@ $leaveBalanceService->initializeOrUpdateBalance($employee);
 
 ### 2. Yearly Accrual
 - Calculated based on **complete years of service**
-- Currently calculated on-demand (when balance initialized)
-- Can be scheduled (recommended: annual job on Jan 1)
+- Leave usage resets at the start of each employee's employment-anniversary year
+- The anniversary reset command runs daily at 12:05 AM and refreshes employees whose anniversary is that day
+- The scheduler must be running for automatic resets: `php artisan schedule:work` or a server cron calling `php artisan schedule:run`
 
 ### 3. Balance Calculation Formula
 ```
@@ -270,7 +271,7 @@ Remaining Balance = Total Credits - Used Days
 
 Where:
 Total Credits = Base Credits + Yearly Accrual (capped at max)
-Used Days = Sum of approved leave request days_deducted
+Used Days = Sum of approved deductible leave days in the current employment-anniversary year
 ```
 
 ### 4. No Rollover
@@ -321,23 +322,19 @@ php artisan leave-balance:initialize --force
 
 ## Future Enhancements
 
-1. **Scheduled Yearly Accrual**
-   - Artisan command scheduled job (e.g., Jan 1 yearly)
-   - Automatic balance update without manual intervention
-
-2. **Admin Balance Adjustment UI**
+1. **Admin Balance Adjustment UI**
    - HR interface to manually adjust balances
    - Audit trail for adjustments
 
-3. **Leave Carryover Rules**
+2. **Leave Carryover Rules**
    - Set maximum carryover (e.g., max 5 days from previous year)
    - Automatic carryover logic
 
-4. **Leave Surrender**
+3. **Leave Surrender**
    - Track and report unused leaves at end of year
    - Compensation calculations
 
-5. **Balance Warnings**
+4. **Balance Warnings**
    - Alert when balance is running low
    - Block leave requests if insufficient balance (optional)
 

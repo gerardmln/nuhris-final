@@ -46,15 +46,6 @@ class DashboardController extends Controller
             ->where('status', 'pending')
             ->count();
 
-        // Attendance stats (today)
-        $todayRecords = AttendanceRecord::query()
-            ->whereDate('record_date', Carbon::today())
-            ->get();
-        
-        $todayPresent = $todayRecords->filter(fn ($r) => $r->status === 'present')->count();
-        $totalToday = $todayRecords->count();
-        $attendanceRate = $totalToday > 0 ? round(($todayPresent / $totalToday) * 100) : 0;
-
         // Compliance rate (credentials verified out of total employees)
         $verifiedCredentials = EmployeeCredential::query()
             ->where('status', 'verified')
@@ -116,7 +107,6 @@ class DashboardController extends Controller
             'stats' => [
                 'total_employees' => $totalEmployees,
                 'compliance_rate' => $complianceRate,
-                'attendance_rate' => $attendanceRate,
                 'expiring_prc' => $expiringPrc,
                 'pending_verifications' => $pendingVerifications,
             ],
@@ -126,7 +116,6 @@ class DashboardController extends Controller
                 ['label' => 'Total Employees', 'value' => $totalEmployees],
                 ['label' => 'Pending Verifications', 'value' => $pendingVerifications],
                 ['label' => 'Leaves for Approval', 'value' => $pendingLeaveApprovals],
-                ['label' => 'Attendance Records Today', 'value' => $totalToday],
             ],
             'recentActivities' => $recentActivities,
         ]);
