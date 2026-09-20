@@ -9,13 +9,6 @@
             <h1 class="text-4xl font-bold text-slate-900">Credential Management</h1>
             <p class="text-slate-600 mt-2">Total: {{ $counts['total'] }} credentials</p>
         </div>
-        <button onclick="if(confirm('Clear ALL credentials? This action cannot be undone.')) { document.getElementById('clear-form').submit(); }" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium">
-            Clear All
-        </button>
-        <form id="clear-form" action="{{ route('admin.credentials.clear-all') }}" method="POST" style="display:none;">
-            @csrf
-            @method('DELETE')
-        </form>
     </div>
 
     <div class="mb-6 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">

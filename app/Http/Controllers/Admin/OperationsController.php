@@ -239,28 +239,6 @@ class OperationsController extends Controller
             ->with('success', "Credential deleted for {$employeeName}.");
     }
 
-    public function clearAllCredentials(): RedirectResponse
-    {
-        $count = EmployeeCredential::query()->count();
-
-        DB::transaction(function () {
-            $credentials = EmployeeCredential::all();
-            foreach ($credentials as $credential) {
-                if (!empty($credential->file_path) && $this->storage->isEnabled()) {
-                    $this->storage->delete($credential->file_path);
-                }
-            }
-            EmployeeCredential::query()->forceDelete();
-        });
-
-        $this->logAudit('DELETE', 'Credentials', "Cleared {$count} credential record(s).", 'Success', [
-            'count' => $count,
-        ]);
-
-        return redirect()->route('admin.credentials.index')
-            ->with('success', 'All credentials have been cleared.');
-    }
-
     /**
      * ========== DTR / TIMEKEEPING EDITING (ADMIN-ONLY) ==========
      */

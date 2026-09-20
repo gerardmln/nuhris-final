@@ -244,7 +244,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1'])->gro
         Route::get('/{credential}/edit', [AdminOperationsController::class, 'editCredential'])->whereNumber('credential')->name('edit');
         Route::put('/{credential}', [AdminOperationsController::class, 'updateCredential'])->whereNumber('credential')->name('update');
         Route::delete('/{credential}', [AdminOperationsController::class, 'deleteCredential'])->whereNumber('credential')->name('destroy');
-        Route::delete('/', [AdminOperationsController::class, 'clearAllCredentials'])->name('clear-all');
     });
 
     // ========== DTR / TIMEKEEPING EDITING (ADMIN-ONLY) ==========
