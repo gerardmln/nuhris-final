@@ -353,6 +353,15 @@ class OperationsController extends Controller
             default => [$monthStart->copy(), $monthEnd->copy()],
         };
 
+        $evaluationDates = [];
+        $evaluationEnd = $attendanceEnd->copy()->min(now());
+        if ($evaluationEnd->gte($attendanceStart)) {
+            foreach (CarbonPeriod::create($attendanceStart->copy()->startOfDay(), $evaluationEnd) as $date) {
+                $evaluationDates[] = $date->toDateString();
+            }
+        }
+        $scheduleService->warmImportCaches($employees, $evaluationDates);
+
         // Pre-aggregate attendance stats to avoid N+1 queries
         $attendanceStats = AttendanceRecord::query()
             ->whereIn('employee_id', $employees->pluck('id'))
@@ -361,22 +370,42 @@ class OperationsController extends Controller
             ->groupBy('employee_id')
             ->map(function ($group) {
                 return [
-                    'present' => $group->where('status', 'present')->count(),
-                    'tardiness' => (int) $group->sum('tardiness_minutes'),
+                    'records' => $group->keyBy(fn (AttendanceRecord $record) => $record->record_date->toDateString()),
                     'has_data' => $group->isNotEmpty(),
                 ];
             });
 
-        $employeeCards = $employees->map(function (Employee $employee) use ($selectedDate, $scheduleService, $attendanceStats, $monthStart, $monthEnd) {
-            $stats = $attendanceStats->get($employee->id, ['present' => 0, 'tardiness' => 0, 'has_data' => false]);
+        $employeeCards = $employees->map(function (Employee $employee) use ($selectedDate, $scheduleService, $attendanceStats, $attendanceStart, $attendanceEnd, $monthStart, $monthEnd) {
+            $stats = $attendanceStats->get($employee->id, ['records' => collect(), 'has_data' => false]);
+            $present = 0;
+            $tardiness = 0;
+            $periodEnd = $attendanceEnd->copy()->min(now());
+
+            if ($periodEnd->gte($attendanceStart)) {
+                foreach (CarbonPeriod::create($attendanceStart->copy()->startOfDay(), $periodEnd) as $date) {
+                    $record = $stats['records']->get($date->toDateString());
+                    $evaluation = $scheduleService->evaluateDailyRecord(
+                        $employee,
+                        $date,
+                        $record?->time_in ? Carbon::parse($record->time_in)->format('H:i') : null,
+                        $record?->time_out ? Carbon::parse($record->time_out)->format('H:i') : null,
+                    );
+
+                    if ($evaluation['status'] === 'present' && ! in_array($evaluation['schedule_status'], ['non_working_day', 'no_schedule'], true)) {
+                        $present++;
+                    }
+
+                    $tardiness += (int) $evaluation['tardiness_minutes'];
+                }
+            }
 
             return [
                 'id' => $employee->id,
                 'initials' => str($employee->full_name)->explode(' ')->take(2)->map(fn ($part) => strtoupper(substr($part, 0, 1)))->join(''),
                 'name' => $employee->full_name,
                 'department' => $employee->department?->name ?? 'Unassigned',
-                'present' => $stats['present'],
-                'tardiness' => $stats['tardiness'],
+                'present' => $present,
+                'tardiness' => $tardiness,
                 'absences' => $scheduleService->countDtrAbsences($employee, $monthStart, $monthEnd),
                 'has_data' => $stats['has_data'],
                 'schedule_summary' => $scheduleService->summarizeSubmission($scheduleService->currentSubmission($employee)),

@@ -98,8 +98,14 @@ class LeaveMonitoringService
     public function isRegularEmployee(Employee $employee, ?Carbon $referenceDate = null): bool
     {
         $employmentType = strtoupper((string) $employee->employment_type);
+        $position = strtoupper((string) $employee->position);
         // Normalize check for any part-time indicator (e.g. "PART-TIME", "PART TIME").
-        $isPartTime = str_contains($employmentType, 'PART-TIME') || str_contains($employmentType, 'PART TIME') || str_contains($employmentType, 'PARTTIME');
+        $isPartTime = str_contains($employmentType, 'PART-TIME')
+            || str_contains($employmentType, 'PART TIME')
+            || str_contains($employmentType, 'PARTTIME')
+            || str_contains($position, 'PART-TIME')
+            || str_contains($position, 'PART TIME')
+            || str_contains($position, 'PARTTIME');
 
         if ($isPartTime) {
             return false;
@@ -241,6 +247,7 @@ class LeaveMonitoringService
     (
         UPPER(COALESCE(employment_type, '')) LIKE ?
         AND UPPER(COALESCE(employment_type, '')) NOT LIKE ?
+            AND UPPER(COALESCE(position, '')) NOT LIKE ?
         AND hire_date IS NOT NULL
         AND hire_date <= ?
     )
@@ -261,6 +268,7 @@ SQL;
             $sql,
             [
                 '%FACULTY%',
+                '%PART-TIME%',
                 '%PART-TIME%',
                 $facultyThreshold,
                 '%ADMIN SUPPORT PERSONNEL%',

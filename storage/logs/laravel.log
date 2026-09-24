@@ -6221,3 +6221,7 @@ DETAIL:  Failing row contains (18, wfh, wfh_class_suspension, 2026-09-17, null, 
 #67 /Users/gerardmln/Laravel Projects/nuhris-final/vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php(23): require_once('/Users/gerardml...')
 #68 {main}
 "} 
+[2026-09-24 19:28:55] local.ERROR: Maximum execution time of 30 seconds exceeded {"userId":2,"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Maximum execution time of 30 seconds exceeded at /Users/gerardmln/Laravel Projects/nuhris-final/vendor/laravel/framework/src/Illuminate/Database/Connection.php:440)
+[stacktrace]
+#0 {main}
+"} 

@@ -208,6 +208,19 @@ class EmployeeScheduleService
         $hasScheduledWork = (bool) ($scheduleDay?->has_work);
 
         if ($academicDayType === 'non_working') {
+            if (! app(LeaveMonitoringService::class)->isRegularEmployee($employee, $date)) {
+                return [
+                    'schedule_status' => 'non_working_day',
+                    'schedule_notes' => 'Academic calendar non-working date (non-regular employee)',
+                    'scheduled_time_in' => null,
+                    'scheduled_time_out' => null,
+                    'tardiness_minutes' => 0,
+                    'undertime_minutes' => 0,
+                    'overtime_minutes' => 0,
+                    'status' => 'absent',
+                ];
+            }
+
             if ($hasScheduledWork) {
                 return [
                     'schedule_status' => 'validated',
