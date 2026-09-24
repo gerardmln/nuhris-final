@@ -73,9 +73,9 @@
         <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm"><p class="text-xs font-medium text-slate-500">Current Year</p><p class="mt-1 text-4xl font-extrabold">{{ $stats['current_year'] }}</p></article>
     </div>
 
-    <article class="rounded-xl border border-slate-300 bg-white p-3 shadow-sm">
+    <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
         <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
-            <form method="GET" action="{{ route('leave.index') }}" class="md:col-span-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <form method="GET" action="{{ route('leave.index') }}" class="md:col-span-3 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
                 <input
                     type="text"
                     name="search"
