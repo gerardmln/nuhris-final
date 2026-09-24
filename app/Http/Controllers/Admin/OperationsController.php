@@ -1489,7 +1489,6 @@ class OperationsController extends Controller
         $search = $request->string('search')->toString();
         $departmentId = $request->string('department_id')->toString();
         $employeeClass = $request->string('employee_class')->toString() ?: 'all';
-        $leaveType = $request->string('leave_type')->toString() ?: 'all';
         $leaveMonitoringService = app(LeaveMonitoringService::class);
         $leaveBalanceService = app(LeaveBalanceService::class);
 
@@ -1610,10 +1609,6 @@ class OperationsController extends Controller
                 'employee_status_label' => $isRegularEmployee ? 'Full - Time' : 'Probationary',
                 'absences' => $absencesByEmployee->get($employee->id, 0),
             ];
-        })->when($leaveType !== 'all', function ($collection) use ($leaveType) {
-            return $collection->filter(function (array $card) use ($leaveType) {
-                return in_array($leaveType, $card['leave_types'], true);
-            })->values();
         });
 
         $totalUsed = (float) $leaveCards->sum('used');
@@ -1640,7 +1635,6 @@ class OperationsController extends Controller
                 'search' => $search,
                 'department_id' => $departmentId,
                 'employee_class' => $employeeClass,
-                'leave_type' => $leaveType,
             ],
             'monthOptions' => $monthOptions,
             'stats' => [

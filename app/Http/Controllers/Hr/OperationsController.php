@@ -312,7 +312,6 @@ class OperationsController extends Controller
         $search = $request->string('search')->trim()->toString();
         $employeeClass = $request->string('employee_class')->toString() ?: 'all';
         $departmentId = $request->string('department_id')->toString();
-        $attendanceStatus = $request->string('attendance_status')->toString() ?: 'all';
         $attendanceRange = $request->string('attendance_range')->toString() ?: 'month';
         $selectedDate = Carbon::createFromDate($year, $month, 1);
 
@@ -413,16 +412,6 @@ class OperationsController extends Controller
                 'schedule_summary' => $scheduleService->summarizeSubmission($currentSchedule),
                 'weekly_work_hours' => $scheduleService->weeklyWorkHoursLabel($currentSchedule),
             ];
-        })->when($attendanceStatus !== 'all', function ($collection) use ($attendanceStatus) {
-            return $collection->filter(function (array $card) use ($attendanceStatus) {
-                return match ($attendanceStatus) {
-                    'with_data' => $card['has_data'],
-                    'no_data' => ! $card['has_data'],
-                    'with_absences' => (int) $card['absences'] > 0,
-                    'no_absences' => (int) $card['absences'] === 0 && $card['has_data'],
-                    default => true,
-                };
-            })->values();
         });
 
         // Generate period options (last 12 months)
@@ -459,7 +448,6 @@ class OperationsController extends Controller
                 'department_id' => $departmentId,
                 'employee_class' => $employeeClass,
                 'search' => $search,
-                'attendance_status' => $attendanceStatus,
                 'attendance_range' => $attendanceRange,
             ],
         ]);

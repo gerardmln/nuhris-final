@@ -68,7 +68,7 @@
 
     <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
         <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
-            <form method="GET" action="{{ route('admin.leave.index') }}" class="md:col-span-3 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <form method="GET" action="{{ route('admin.leave.index') }}" class="md:col-span-3 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
                 <input
                     type="text"
                     name="search"
@@ -87,15 +87,6 @@
                     <option value="all" @selected(($filters['employee_class'] ?? 'all') === 'all')>All Employee Types</option>
                     <option value="regular" @selected(($filters['employee_class'] ?? '') === 'regular')>Full - Time Employees</option>
                     <option value="irregular" @selected(($filters['employee_class'] ?? '') === 'irregular')>Probationary Employees</option>
-                </select>
-                <select name="leave_type" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 px-2 py-2 text-sm focus:border-blue-400 focus:outline-none">
-                    <option value="all" @selected(($filters['leave_type'] ?? 'all') === 'all')>All Leave Types</option>
-                    <option value="vacation leave" @selected(($filters['leave_type'] ?? '') === 'vacation leave')>Vacation Leave</option>
-                    <option value="sick leave" @selected(($filters['leave_type'] ?? '') === 'sick leave')>Sick Leave</option>
-                    <option value="emergency leave" @selected(($filters['leave_type'] ?? '') === 'emergency leave')>Emergency Leave</option>
-                    <option value="bereavement leave" @selected(($filters['leave_type'] ?? '') === 'bereavement leave')>Bereavement Leave</option>
-                    <option value="training leave" @selected(($filters['leave_type'] ?? '') === 'training leave')>Training Leave</option>
-                    <option value="official business" @selected(($filters['leave_type'] ?? '') === 'official business')>Official Business</option>
                 </select>
             </form>
         </div>
