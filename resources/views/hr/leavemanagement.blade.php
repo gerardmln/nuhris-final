@@ -75,22 +75,22 @@
 
     <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
         <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
-            <form method="GET" action="{{ route('leave.index') }}" class="md:col-span-3 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <form method="GET" action="{{ route('leave.index') }}" class="md:col-span-3 flex min-w-0 flex-col gap-3 md:flex-row">
                 <input
                     type="text"
                     name="search"
                     value="{{ $filters['search'] ?? '' }}"
                     placeholder="Search by name, email, ID, or department..."
-                    class="w-full min-w-0 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+                    class="w-full min-w-0 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none md:flex-[1.5]"
                 >
-                <select name="department_id" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 px-2 py-2 text-sm focus:border-blue-400 focus:outline-none">
+                <select name="department_id" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 px-2 py-2 text-sm focus:border-blue-400 focus:outline-none md:flex-1">
                     <option value="">All Departments</option>
                     <option value="asp" @selected(($filters['department_id'] ?? '') === 'asp')>Admin Support Personnel</option>
                     @foreach ($departments as $department)
                         <option value="{{ $department->id }}" @selected(($filters['department_id'] ?? '') == $department->id)>{{ $department->name }}</option>
                     @endforeach
                 </select>
-                <select name="employee_class" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 px-2 py-2 text-sm focus:border-blue-400 focus:outline-none">
+                <select name="employee_class" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 px-2 py-2 text-sm focus:border-blue-400 focus:outline-none md:flex-1">
                     <option value="all" @selected(($filters['employee_class'] ?? 'all') === 'all')>All Employee Types</option>
                     <option value="regular" @selected(($filters['employee_class'] ?? '') === 'regular')>Full - Time Employees</option>
                     <option value="irregular" @selected(($filters['employee_class'] ?? '') === 'irregular')>Probationary Employees</option>
