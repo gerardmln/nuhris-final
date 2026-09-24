@@ -6067,3 +6067,12 @@ Stack trace:
 [2026-09-20 15:22:32] testing.WARNING: Supabase findByEmail: no exact match found {"target_email":"yasmin24@example.org","pages_searched":1} 
 [2026-09-20 15:22:32] testing.INFO: SUPABASE USER LOOKUP RESULT {"laravel_user_id":18,"email":"yasmin24@example.org","supabase_user_id":null,"supabase_email":null} 
 [2026-09-20 15:22:32] testing.INFO: SUPABASE PASSWORD CREATE RESULT {"laravel_user_id":18,"email":"yasmin24@example.org","successful":true} 
+[2026-09-24 19:00:06] testing.WARNING: Supabase auth sync failed for user creation {"user_id":4,"email":"jane.doe@example.com","status":422,"body":"{\"code\":422,\"error_code\":\"email_exists\",\"msg\":\"A user with this email address has already been registered\"}"} 
+[2026-09-24 19:01:31] testing.INFO: SUPABASE PASSWORD SYNC CONFIG {"configured":true,"has_url":true,"has_service_key":true} 
+[2026-09-24 19:01:31] testing.WARNING: Supabase findByEmail: no exact match found {"target_email":"kassulke.elsa@example.net","pages_searched":1} 
+[2026-09-24 19:01:31] testing.INFO: SUPABASE USER LOOKUP RESULT {"laravel_user_id":17,"email":"kassulke.elsa@example.net","supabase_user_id":null,"supabase_email":null} 
+[2026-09-24 19:01:32] testing.INFO: SUPABASE PASSWORD CREATE RESULT {"laravel_user_id":17,"email":"kassulke.elsa@example.net","successful":true} 
+[2026-09-24 19:01:37] testing.INFO: SUPABASE PASSWORD SYNC CONFIG {"configured":true,"has_url":true,"has_service_key":true} 
+[2026-09-24 19:01:37] testing.WARNING: Supabase findByEmail: no exact match found {"target_email":"pfeffer.magnus@example.net","pages_searched":1} 
+[2026-09-24 19:01:37] testing.INFO: SUPABASE USER LOOKUP RESULT {"laravel_user_id":18,"email":"pfeffer.magnus@example.net","supabase_user_id":null,"supabase_email":null} 
+[2026-09-24 19:01:37] testing.INFO: SUPABASE PASSWORD CREATE RESULT {"laravel_user_id":18,"email":"pfeffer.magnus@example.net","successful":true} 

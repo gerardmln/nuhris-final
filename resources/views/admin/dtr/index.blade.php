@@ -13,6 +13,16 @@
             <p class="text-sm text-slate-500">View biometric attendance records, print DTR, and upload DTR files</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+            <div class="flex max-w-[24rem] items-center gap-2 text-xs text-slate-500">
+                <span class="whitespace-nowrap">Last uploaded file:</span>
+                <select class="min-w-0 truncate rounded-md border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700" aria-label="Latest uploaded DTR files">
+                    @forelse ($latestDtrUploads as $upload)
+                        <option>{{ $upload->metadata['original_filename'] }} ({{ $upload->created_at->format('M j, Y g:i A') }})</option>
+                    @empty
+                        <option>No uploaded DTR files</option>
+                    @endforelse
+                </select>
+            </div>
             <button data-open-modal="upload-dtr-modal" class="rounded-lg bg-[#00386f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f5d] transition">Upload DTR PDF</button>
         </div>
     </div>
@@ -219,6 +229,11 @@
                         <option value="not_present" @selected(($recordStatus ?? '') === 'not_present')>Not Present</option>
                         <option value="non_working_day" @selected(($recordStatus ?? '') === 'non_working_day')>Non-working day</option>
                         <option value="weekend" @selected(($recordStatus ?? '') === 'weekend')>Weekend</option>
+                    </select>
+                    <select name="attendance_range" onchange="this.form.submit()" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm focus:border-blue-400 focus:outline-none lg:min-w-[14rem]">
+                        <option value="month" @selected(($attendanceRange ?? 'month') === 'month')>Total Month</option>
+                        <option value="first_half" @selected(($attendanceRange ?? '') === 'first_half')>1st-15th</option>
+                        <option value="second_half" @selected(($attendanceRange ?? '') === 'second_half')>16th-End</option>
                     </select>
                     <input type="hidden" name="month" value="{{ $selectedMonth }}">
                     <input type="hidden" name="year" value="{{ $selectedYear }}">

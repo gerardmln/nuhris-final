@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Hr;
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
 use App\Models\AnnouncementNotification;
+use App\Models\AdminAuditLog;
 use App\Models\AttendanceRecord;
 use App\Models\Department;
 use App\Models\Employee;
@@ -189,7 +190,10 @@ class OperationsController extends Controller
             return back()->with('error', 'Unable to generate a download link. Please try again.');
         }
 
-        return redirect()->away($url);
+        return view('files.preview', [
+            'url' => $url,
+            'filename' => $credential->original_filename ?: basename($credential->file_path),
+        ]);
     }
 
     public function approveCredential(Request $request, EmployeeCredential $credential): RedirectResponse
@@ -309,6 +313,7 @@ class OperationsController extends Controller
         $employeeClass = $request->string('employee_class')->toString() ?: 'all';
         $departmentId = $request->string('department_id')->toString();
         $attendanceStatus = $request->string('attendance_status')->toString() ?: 'all';
+        $attendanceRange = $request->string('attendance_range')->toString() ?: 'month';
         $selectedDate = Carbon::createFromDate($year, $month, 1);
 
         $query = Employee::query()
@@ -342,11 +347,16 @@ class OperationsController extends Controller
 
         $monthStart = $selectedDate->copy()->startOfMonth();
         $monthEnd = $selectedDate->copy()->endOfMonth();
+        [$attendanceStart, $attendanceEnd] = match ($attendanceRange) {
+            'first_half' => [$monthStart->copy(), $monthStart->copy()->day(15)->endOfDay()],
+            'second_half' => [$monthStart->copy()->day(16)->startOfDay(), $monthEnd->copy()],
+            default => [$monthStart->copy(), $monthEnd->copy()],
+        };
 
         // Pre-aggregate attendance stats to avoid N+1 queries
         $attendanceStats = AttendanceRecord::query()
             ->whereIn('employee_id', $employees->pluck('id'))
-            ->whereBetween('record_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->whereBetween('record_date', [$attendanceStart->toDateString(), $attendanceEnd->toDateString()])
             ->get()
             ->groupBy('employee_id')
             ->map(function ($group) {
@@ -399,6 +409,14 @@ class OperationsController extends Controller
 
         return view('hr.timekeeping', [
             'employeeCards' => $employeeCards,
+            'latestDtrUploads' => AdminAuditLog::query()
+                ->where('module', 'DTR')
+                ->where('action', 'CREATE')
+                ->where('status', 'Success')
+                ->whereNotNull('metadata->original_filename')
+                ->latest()
+                ->limit(10)
+                ->get(),
             'periods' => $periods,
             'selectedMonth' => $month,
             'selectedYear' => $year,
@@ -410,6 +428,7 @@ class OperationsController extends Controller
                 'employee_class' => $employeeClass,
                 'search' => $search,
                 'attendance_status' => $attendanceStatus,
+                'attendance_range' => $attendanceRange,
             ],
         ]);
     }
@@ -893,6 +912,12 @@ class OperationsController extends Controller
                 $message .= ", {$skipped} skipped (unmatched employees)";
             }
             $message .= '.';
+
+            app(\App\Services\AuditLogService::class)->record('CREATE', 'DTR', $message, 'Success', [
+                'original_filename' => $file->getClientOriginalName(),
+                'imported' => $imported,
+                'skipped' => $skipped,
+            ]);
 
             return back()
                 ->with('success', $message)

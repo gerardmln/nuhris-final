@@ -238,7 +238,7 @@ class WfhMonitoringController extends Controller
         return back()->with('success', 'WFH submission declined. The employee has been notified.');
     }
 
-    public function viewFile(Request $request, WfhMonitoringSubmission $submission, SupabaseStorageService $storage): RedirectResponse
+    public function viewFile(Request $request, WfhMonitoringSubmission $submission, SupabaseStorageService $storage): View|RedirectResponse
     {
         if (! $submission->file_path) {
             return back()->with('error', 'No file was attached to this WFH submission.');
@@ -254,6 +254,9 @@ class WfhMonitoringController extends Controller
             return back()->with('error', 'Unable to generate a download link. Please try again.');
         }
 
-        return redirect()->away($url);
+        return view('files.preview', [
+            'url' => $url,
+            'filename' => $submission->original_filename ?: basename($submission->file_path),
+        ]);
     }
 }

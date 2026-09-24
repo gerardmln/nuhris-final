@@ -173,7 +173,7 @@ class WfhMonitoringController extends Controller
         return redirect()->route('employee.wfh-monitoring.index')->with('success', 'Your WFH monitoring sheet was uploaded and is now pending HR review.');
     }
 
-    public function viewFile(Request $request, WfhMonitoringSubmission $submission, SupabaseStorageService $storage): RedirectResponse
+    public function viewFile(Request $request, WfhMonitoringSubmission $submission, SupabaseStorageService $storage): View|RedirectResponse
     {
         $employee = Employee::query()->where('email', $request->user()->email)->firstOrFail();
 
@@ -193,6 +193,9 @@ class WfhMonitoringController extends Controller
             return back()->with('error', 'Unable to generate a download link. Please try again.');
         }
 
-        return redirect()->away($url);
+        return view('files.preview', [
+            'url' => $url,
+            'filename' => $submission->original_filename ?: basename($submission->file_path),
+        ]);
     }
 }

@@ -330,7 +330,7 @@ class PortalController extends Controller
         return redirect()->route('employee.credentials')->with('success', 'Credential uploaded successfully. It is now pending HR review.');
     }
 
-    public function viewCredentialFile(Request $request, EmployeeCredential $credential, SupabaseStorageService $storage): RedirectResponse
+    public function viewCredentialFile(Request $request, EmployeeCredential $credential, SupabaseStorageService $storage): View|RedirectResponse
     {
         $employee = Employee::query()->where('email', $request->user()->email)->firstOrFail();
 
@@ -350,7 +350,10 @@ class PortalController extends Controller
             return back()->with('error', 'Unable to generate a download link. Please try again.');
         }
 
-        return redirect()->away($url);
+        return view('files.preview', [
+            'url' => $url,
+            'filename' => $credential->original_filename ?: basename($credential->file_path),
+        ]);
     }
 
     public function destroyCredential(Request $request, EmployeeCredential $credential, SupabaseStorageService $storage): RedirectResponse

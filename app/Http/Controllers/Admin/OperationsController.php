@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminAuditLog;
 use App\Models\Announcement;
 use App\Models\AnnouncementNotification;
 use App\Models\AttendanceRecord;
@@ -156,7 +157,7 @@ class OperationsController extends Controller
         ]);
     }
 
-    public function viewCredentialFile(EmployeeCredential $credential): RedirectResponse
+    public function viewCredentialFile(EmployeeCredential $credential): View|RedirectResponse
     {
         $employeeName = $credential->employee?->full_name ?? 'Unknown Employee';
 
@@ -191,7 +192,10 @@ class OperationsController extends Controller
             'title' => $credential->title,
         ]);
 
-        return redirect()->away($url);
+        return view('files.preview', [
+            'url' => $url,
+            'filename' => $credential->original_filename ?: basename($credential->file_path),
+        ]);
     }
 
     public function updateCredential(Request $request, EmployeeCredential $credential): RedirectResponse
@@ -249,6 +253,7 @@ class OperationsController extends Controller
         $month = $request->integer('month');
         $year = $request->integer('year');
         $recordStatus = $request->string('record_status')->toString() ?: 'all';
+        $attendanceRange = $request->string('attendance_range')->toString() ?: 'month';
 
         if ($month && $year) {
             $dateFrom = Carbon::createFromDate($year, $month, 1)->startOfMonth();
@@ -263,6 +268,11 @@ class OperationsController extends Controller
 
         $selectedMonth = $dateFrom->month;
         $selectedYear = $dateFrom->year;
+        [$attendanceStart, $attendanceEnd] = match ($attendanceRange) {
+            'first_half' => [$dateFrom->copy()->startOfMonth(), $dateFrom->copy()->startOfMonth()->day(15)->endOfDay()],
+            'second_half' => [$dateFrom->copy()->startOfMonth()->day(16)->startOfDay(), $dateFrom->copy()->endOfMonth()],
+            default => [$dateFrom->copy()->startOfMonth(), $dateFrom->copy()->endOfMonth()],
+        };
         $employee = $employeeId ? Employee::query()->with('department')->findOrFail($employeeId) : null;
         $scheduleService = app(EmployeeScheduleService::class);
 
@@ -314,7 +324,7 @@ class OperationsController extends Controller
 
         $attendanceStats = AttendanceRecord::query()
             ->whereIn('employee_id', $employees->pluck('id'))
-            ->whereBetween('record_date', [$dateFrom->toDateString(), $dateTo->toDateString()])
+            ->whereBetween('record_date', [$attendanceStart->toDateString(), $attendanceEnd->toDateString()])
             ->get()
             ->groupBy('employee_id')
             ->map(fn ($group) => [
@@ -356,6 +366,14 @@ class OperationsController extends Controller
 
         return view('admin.dtr.index', [
             'records' => $records,
+            'latestDtrUploads' => AdminAuditLog::query()
+                ->where('module', 'DTR')
+                ->where('action', 'CREATE')
+                ->where('status', 'Success')
+                ->whereNotNull('metadata->original_filename')
+                ->latest()
+                ->limit(10)
+                ->get(),
             'summary' => $summary,
             'employee' => $employee,
             'employees' => $employees,
@@ -367,6 +385,7 @@ class OperationsController extends Controller
             'employeeCards' => $employeeCards,
             'scheduleSummary' => $employee ? $scheduleService->summarizeSubmission($scheduleService->approvedSubmissionForDate($employee, $dateFrom)) : null,
             'recordStatus' => $recordStatus,
+            'attendanceRange' => $attendanceRange,
         ]);
     }
 
@@ -613,6 +632,7 @@ class OperationsController extends Controller
             }
 
             $this->logAudit('CREATE', 'DTR', $message, 'Success', [
+                'original_filename' => $file->getClientOriginalName(),
                 'imported' => $imported,
                 'skipped' => $skipped,
             ]);
@@ -1244,7 +1264,7 @@ class OperationsController extends Controller
             ->with('success', "Cleared {$count} WFH records and corresponding attendance.");
     }
 
-    public function viewWfhFile(WfhMonitoringSubmission $submission): RedirectResponse
+    public function viewWfhFile(WfhMonitoringSubmission $submission): View|RedirectResponse
     {
         $employeeName = $submission->employee?->full_name ?? 'Unknown Employee';
 
@@ -1278,7 +1298,10 @@ class OperationsController extends Controller
             'submission_id' => $submission->id,
         ]);
 
-        return redirect()->away($url);
+        return view('files.preview', [
+            'url' => $url,
+            'filename' => $submission->original_filename ?: basename($submission->file_path),
+        ]);
     }
 
     public function deleteWfhSubmission(WfhMonitoringSubmission $submission): RedirectResponse
