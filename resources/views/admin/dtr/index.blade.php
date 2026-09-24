@@ -95,9 +95,9 @@
                     <p class="text-xs font-semibold text-blue-700">Weekly work hours: {{ $weeklyWorkHours }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <form method="GET" action="{{ route('admin.dtr.index') }}" class="flex items-center gap-2">
+                    <form method="GET" action="{{ route('admin.dtr.index') }}" class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
                         <input type="hidden" name="employee_id" value="{{ $employee?->id }}">
-                        <select name="period" onchange="this.form.querySelector('[name=month]').value=this.value.split('-')[0]; this.form.querySelector('[name=year]').value=this.value.split('-')[1]; this.form.submit();" class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-400 focus:outline-none">
+                        <select name="period" onchange="this.form.querySelector('[name=month]').value=this.value.split('-')[0]; this.form.querySelector('[name=year]').value=this.value.split('-')[1]; this.form.submit();" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-400 focus:outline-none sm:w-auto">
                             @foreach ($periods as $period)
                                 <option value="{{ $period['month'] }}-{{ $period['year'] }}" {{ $period['selected'] ? 'selected' : '' }}>{{ $period['label'] }}</option>
                             @endforeach
@@ -211,27 +211,27 @@
 
     <article class="rounded-xl border border-slate-300 bg-white p-3 shadow-sm {{ $employee ? 'mt-6' : 'mt-4' }}">
         <div class="grid grid-cols-1 gap-2 md:grid-cols-4">
-            <form method="GET" action="{{ route('admin.dtr.index') }}" class="md:col-span-4">
-                <div class="flex flex-col gap-2 lg:flex-row">
-                    <input type="text" name="search" value="{{ request('search') ?? '' }}" placeholder="Search by name, email, ID, or department..." class="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
-                    <select name="period" onchange="this.form.querySelector('[name=month]').value=this.value.split('-')[0]; this.form.querySelector('[name=year]').value=this.value.split('-')[1]; this.form.submit();" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm focus:border-blue-400 focus:outline-none lg:w-56">
+            <form method="GET" action="{{ route('admin.dtr.index') }}" class="md:col-span-4 min-w-0">
+                <div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+                    <input type="text" name="search" value="{{ request('search') ?? '' }}" placeholder="Search by name, email, ID, or department..." class="w-full min-w-0 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none sm:col-span-2 2xl:col-span-2">
+                    <select name="period" onchange="this.form.querySelector('[name=month]').value=this.value.split('-')[0]; this.form.querySelector('[name=year]').value=this.value.split('-')[1]; this.form.submit();" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
                         @foreach ($periods as $period)
                             <option value="{{ $period['month'] }}-{{ $period['year'] }}" @selected($period['selected'])>{{ $period['label'] }}</option>
                         @endforeach
                     </select>
-                    <select name="employee_class" onchange="this.form.submit()" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm focus:border-blue-400 focus:outline-none lg:min-w-[14rem]">
+                    <select name="employee_class" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
                         <option value="all">All Employee Types</option>
                         <option value="regular" @selected(request('employee_class') === 'regular')>Regular Employees</option>
                         <option value="irregular" @selected(request('employee_class') === 'irregular')>Non-Regular Employee</option>
                     </select>
-                    <select name="record_status" onchange="this.form.submit()" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm focus:border-blue-400 focus:outline-none lg:min-w-[14rem]">
+                    <select name="record_status" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
                         <option value="all" @selected(($recordStatus ?? 'all') === 'all')>All Statuses</option>
                         <option value="present" @selected(($recordStatus ?? '') === 'present')>Present</option>
                         <option value="not_present" @selected(($recordStatus ?? '') === 'not_present')>Not Present</option>
                         <option value="non_working_day" @selected(($recordStatus ?? '') === 'non_working_day')>Non-working day</option>
                         <option value="weekend" @selected(($recordStatus ?? '') === 'weekend')>Weekend</option>
                     </select>
-                    <select name="attendance_range" onchange="this.form.submit()" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm focus:border-blue-400 focus:outline-none lg:min-w-[14rem]">
+                    <select name="attendance_range" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
                         <option value="month" @selected(($attendanceRange ?? 'month') === 'month')>Total Month</option>
                         <option value="first_half" @selected(($attendanceRange ?? '') === 'first_half')>1st-15th</option>
                         <option value="second_half" @selected(($attendanceRange ?? '') === 'second_half')>16th-End</option>

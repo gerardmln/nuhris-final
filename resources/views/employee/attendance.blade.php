@@ -155,9 +155,9 @@
                 <h2 class="text-3xl font-bold text-slate-900">Daily Time Records</h2>
                 <p class="mt-1 text-sm text-slate-500">Showing {{ \Carbon\Carbon::create($selectedYear, $selectedMonth, 1)->format('F Y') }}</p>
             </div>
-            <form method="GET" action="{{ route('employee.attendance') }}" class="flex items-center gap-2">
+            <form method="GET" action="{{ route('employee.attendance') }}" class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
                 <label for="attendance-period" class="text-sm font-semibold text-slate-700">Month</label>
-                <select id="attendance-period" name="period" onchange="this.form.querySelector('[name=month]').value=this.value.split('-')[0]; this.form.querySelector('[name=year]').value=this.value.split('-')[1]; this.form.submit()" class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-400 focus:outline-none">
+                <select id="attendance-period" name="period" onchange="this.form.querySelector('[name=month]').value=this.value.split('-')[0]; this.form.querySelector('[name=year]').value=this.value.split('-')[1]; this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-400 focus:outline-none sm:w-auto">
                     @foreach ($periods as $period)
                         <option value="{{ $period['month'] }}-{{ $period['year'] }}" @selected($period['selected'])>{{ $period['label'] }}</option>
                     @endforeach

@@ -40,11 +40,11 @@
                 </div>
                 <div class="flex flex-wrap gap-2">
                     {{-- Period Selector --}}
-                    <form method="GET" action="{{ route('timekeeping.dtr') }}" class="flex items-center gap-2" data-testid="dtr-period-form">
+                    <form method="GET" action="{{ route('timekeeping.dtr') }}" class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center" data-testid="dtr-period-form">
                         <input type="hidden" name="employee" value="{{ $employee?->id }}">
                         <select name="period" onchange="this.form.querySelector('[name=month]').value=this.value.split('-')[0]; this.form.querySelector('[name=year]').value=this.value.split('-')[1]; this.form.submit();"
                                 data-testid="dtr-period-selector"
-                                class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-400 focus:outline-none">
+                                class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-400 focus:outline-none sm:w-auto">
                             @foreach ($periods as $period)
                                 <option value="{{ $period['month'] }}-{{ $period['year'] }}" {{ $period['selected'] ? 'selected' : '' }}>
                                     {{ $period['label'] }}
