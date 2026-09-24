@@ -61,7 +61,7 @@
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">What the calendar shows</p>
                 <ul class="mt-3 space-y-2 text-sm text-slate-600">
                     <li>• Scroll month by month through the academic year.</li>
-                    <li>• See holidays, events, and working-day status.</li>
+                    <li>• See holidays, events, WFH/class suspensions, and working-day status.</li>
                     <li>• Jump directly to a specific month from the side list.</li>
                 </ul>
             </div>
@@ -170,7 +170,7 @@
             <div class="mb-4 flex items-start justify-between gap-4">
                 <div>
                     <h4 id="entry-modal-title" class="text-3xl font-bold text-[#24358a]">Add Academic Date</h4>
-                    <p id="entry-modal-subtitle" class="text-sm text-slate-500">Record a holiday or event, then mark whether the date is working or non-working.</p>
+                    <p id="entry-modal-subtitle" class="text-sm text-slate-500">Record a holiday, event, or WFH/class suspension, then mark whether the date is working or non-working.</p>
                 </div>
                 <button id="close-entry-modal" type="button" class="text-2xl leading-none text-slate-500 hover:text-slate-800">&times;</button>
             </div>
@@ -188,6 +188,7 @@
                             <select id="entry-type" name="entry_type" class="w-full rounded-xl border border-slate-300 px-3 py-2" required>
                                 <option value="holiday">Holiday</option>
                                 <option value="event">Event</option>
+                                <option value="wfh_class_suspension">WFH / Class Suspension</option>
                         </select>
                     </div>
                     <div>

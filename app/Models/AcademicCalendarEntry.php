@@ -32,14 +32,20 @@ class AcademicCalendarEntry extends Model
 
     public function getTypeLabelAttribute(): string
     {
-        return ucfirst($this->entry_type ?? 'event');
+        return match ($this->entry_type) {
+            'wfh_class_suspension' => 'WFH / Class Suspension',
+            'holiday' => 'Holiday',
+            default => 'Event',
+        };
     }
 
     public function getBadgeClassAttribute(): string
     {
-        return $this->entry_type === 'holiday'
-            ? 'bg-amber-100 text-amber-800'
-            : 'bg-blue-100 text-blue-800';
+        return match ($this->entry_type) {
+            'holiday' => 'bg-amber-100 text-amber-800',
+            'wfh_class_suspension' => 'bg-violet-100 text-violet-800',
+            default => 'bg-blue-100 text-blue-800',
+        };
     }
 
     public function isNonWorking(): bool

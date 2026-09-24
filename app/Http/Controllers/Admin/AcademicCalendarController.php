@@ -107,7 +107,7 @@ class AcademicCalendarController extends Controller
     {
         return $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'entry_type' => ['required', 'in:holiday,event'],
+            'entry_type' => ['required', 'in:holiday,event,wfh_class_suspension'],
             'day_type' => ['required', 'in:working,non_working'],
             'event_date' => ['required', 'date'],
             'description' => ['nullable', 'string', 'max:1000'],
