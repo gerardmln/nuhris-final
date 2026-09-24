@@ -81,16 +81,16 @@
                     name="search"
                     value="{{ $filters['search'] ?? '' }}"
                     placeholder="Search by name, email, ID, or department..."
-                    class="w-full min-w-0 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none md:flex-[1.5]"
+                    class="w-full min-w-0 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none md:w-[28rem] md:flex-none"
                 >
-                <select name="department_id" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 px-2 py-2 text-sm focus:border-blue-400 focus:outline-none md:flex-1">
+                <select name="department_id" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 px-2 py-2 text-sm focus:border-blue-400 focus:outline-none md:w-[17rem] md:flex-none">
                     <option value="">All Departments</option>
                     <option value="asp" @selected(($filters['department_id'] ?? '') === 'asp')>Admin Support Personnel</option>
                     @foreach ($departments as $department)
                         <option value="{{ $department->id }}" @selected(($filters['department_id'] ?? '') == $department->id)>{{ $department->name }}</option>
                     @endforeach
                 </select>
-                <select name="employee_class" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 px-2 py-2 text-sm focus:border-blue-400 focus:outline-none md:flex-1">
+                <select name="employee_class" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 px-2 py-2 text-sm focus:border-blue-400 focus:outline-none md:w-[17rem] md:flex-none">
                     <option value="all" @selected(($filters['employee_class'] ?? 'all') === 'all')>All Employee Types</option>
                     <option value="regular" @selected(($filters['employee_class'] ?? '') === 'regular')>Full - Time Employees</option>
                     <option value="irregular" @selected(($filters['employee_class'] ?? '') === 'irregular')>Probationary Employees</option>
