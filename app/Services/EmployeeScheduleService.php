@@ -454,6 +454,39 @@ class EmployeeScheduleService
         return implode(' | ', $parts);
     }
 
+    public function weeklyWorkHours(?EmployeeScheduleSubmission $submission): float
+    {
+        if (! $submission) {
+            return 0;
+        }
+
+        return $submission->days
+            ->filter(fn ($day) => $day->has_work && $day->time_in && $day->time_out)
+            ->sum(function ($day) {
+                $timeIn = Carbon::parse($day->time_in);
+                $timeOut = Carbon::parse($day->time_out);
+
+                if ($timeOut->lessThanOrEqualTo($timeIn)) {
+                    $timeOut->addDay();
+                }
+
+                return $timeIn->diffInMinutes($timeOut) / 60;
+            });
+    }
+
+    public function weeklyWorkHoursLabel(?EmployeeScheduleSubmission $submission): string
+    {
+        if (! $submission) {
+            return 'No schedule available';
+        }
+
+        $totalMinutes = (int) round($this->weeklyWorkHours($submission) * 60);
+        $hours = intdiv($totalMinutes, 60);
+        $minutes = $totalMinutes % 60;
+
+        return $minutes > 0 ? $hours.' hours '.$minutes.' minutes' : $hours.' hours';
+    }
+
     public function countDtrAbsences(Employee $employee, Carbon $startDate, Carbon $endDate): int
     {
         return $this->countDtrAbsencesWithContext($employee, $startDate, $endDate);

@@ -78,6 +78,7 @@ class ScheduleManagementController extends Controller
                 'submission' => $latestSubmission,
                 'status' => $latestSubmission->status,
                 'schedule_summary' => $scheduleService->summarizeSubmission($latestSubmission),
+                'weekly_work_hours' => $scheduleService->weeklyWorkHoursLabel($latestSubmission),
             ];
         })->when($statusFilter !== 'all', function ($collection) use ($statusFilter) {
             return $collection->filter(function (array $entry) use ($statusFilter) {

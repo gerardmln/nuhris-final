@@ -88,6 +88,7 @@
                 </div>
 
                 @if ($submission)
+                    <p class="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800">Weekly work hours: {{ $entry['weekly_work_hours'] }}</p>
                     <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                         @foreach ($submission->days as $day)
                             <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">

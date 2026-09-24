@@ -348,6 +348,7 @@ class OperationsController extends Controller
                 'absences' => $scheduleService->countDtrAbsencesWithContext($emp, $dateFrom, $dateTo, $employeeApprovedLeaves, $employeeApprovedSchedule),
                 'has_data' => $stats['has_data'],
                 'schedule_summary' => $scheduleService->summarizeSubmission($employeeApprovedSchedule),
+                'weekly_work_hours' => $scheduleService->weeklyWorkHoursLabel($employeeApprovedSchedule),
             ];
         });
 
@@ -384,6 +385,7 @@ class OperationsController extends Controller
             'periods' => $periods,
             'employeeCards' => $employeeCards,
             'scheduleSummary' => $employee ? $scheduleService->summarizeSubmission($scheduleService->approvedSubmissionForDate($employee, $dateFrom)) : null,
+            'weeklyWorkHours' => $employee ? $scheduleService->weeklyWorkHoursLabel($scheduleService->approvedSubmissionForDate($employee, $dateFrom)) : 'No schedule available',
             'recordStatus' => $recordStatus,
             'attendanceRange' => $attendanceRange,
         ]);

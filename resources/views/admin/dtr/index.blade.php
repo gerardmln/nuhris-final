@@ -92,6 +92,7 @@
                     <h1 class="text-2xl font-bold text-[#1f2b5d]">{{ $employee?->full_name ?? 'Employee' }}</h1>
                     <p class="text-sm text-slate-600">{{ $employee?->department?->name ?? 'Unassigned' }} | Period: {{ $dateFrom->format('F Y') }}</p>
                     <p class="text-xs text-slate-600">Approved Schedule: {{ $scheduleSummary ?? 'N/A' }}</p>
+                    <p class="text-xs font-semibold text-blue-700">Weekly work hours: {{ $weeklyWorkHours }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <form method="GET" action="{{ route('admin.dtr.index') }}" class="flex items-center gap-2">
@@ -271,6 +272,7 @@
                     <p class="mt-3 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-center text-[11px] text-slate-500">No biometric data yet for this period.</p>
                 @endunless
                 <p class="mt-3 text-xs text-slate-500">Schedule: {{ $card['schedule_summary'] }}</p>
+                <p class="mt-1 text-xs font-semibold text-blue-700">Weekly work hours: {{ $card['weekly_work_hours'] }}</p>
                 <a href="{{ route('admin.dtr.index', ['employee_id' => $card['id'], 'month' => $selectedMonth, 'year' => $selectedYear]) }}" class="mt-3 block w-full rounded-md bg-[#00386f] px-3 py-2 text-center text-sm font-semibold text-white hover:bg-[#002f5d] transition">View DTR</a>
                 {{-- Clear DTR button removed to prevent accidental data loss --}}
             </article>

@@ -519,6 +519,7 @@ class PortalController extends Controller
             'totals' => $totals,
             'scheduleDays' => $scheduleService->weeklyDays(),
             'currentSchedule' => $currentSchedule,
+            'weeklyWorkHours' => $scheduleService->weeklyWorkHoursLabel($currentSchedule),
             'scheduleDayMap' => $scheduleDays,
             'canEditSchedule' => $canEditSchedule,
             'overallResult' => $overallResult,

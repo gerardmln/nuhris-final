@@ -36,6 +36,7 @@
                     <h1 class="text-2xl font-bold text-[#1f2b5d]" data-testid="dtr-employee-name">{{ $employee?->full_name ?? 'Employee' }}</h1>
                     <p class="text-sm text-slate-600">{{ $employee?->department?->name ?? 'Unassigned' }} | Period: {{ $period_label }}</p>
                     <p class="text-xs text-slate-600">Approved Schedule: {{ $schedule_summary }}</p>
+                    <p class="text-xs font-semibold text-blue-700">Weekly work hours: {{ $weekly_work_hours }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     {{-- Period Selector --}}

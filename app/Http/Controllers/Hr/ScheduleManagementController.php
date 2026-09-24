@@ -60,7 +60,7 @@ class ScheduleManagementController extends Controller
             ->groupBy('employee_id')
             ->map(fn ($items) => $items->first());
 
-        $employeeSchedules = $employees->map(function (Employee $employee) use ($latestSubmissions) {
+        $employeeSchedules = $employees->map(function (Employee $employee) use ($latestSubmissions, $scheduleService) {
             $latestSubmission = $latestSubmissions->get($employee->id);
 
             if (! $latestSubmission || $latestSubmission->status === EmployeeScheduleSubmission::STATUS_RESET) {
@@ -75,6 +75,7 @@ class ScheduleManagementController extends Controller
                 'employee' => $employee,
                 'submission' => $latestSubmission,
                 'status' => $latestSubmission->status,
+                'weekly_work_hours' => $scheduleService->weeklyWorkHoursLabel($latestSubmission),
             ];
         })->when($statusFilter !== 'all', function ($collection) use ($statusFilter) {
             return $collection->filter(function (array $entry) use ($statusFilter) {

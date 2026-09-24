@@ -17,6 +17,7 @@
                 <p class="font-semibold text-slate-800">Current submission</p>
                 <p>{{ $currentSchedule?->term_label ?? $currentSchedule?->semester_label ?? 'No submission yet' }}</p>
                 <p class="mt-1">Status: <span class="font-semibold">{{ ucfirst($currentSchedule?->status ?? 'draft') }}</span></p>
+                <p class="mt-1 font-semibold text-blue-700">Weekly work hours: {{ $weeklyWorkHours }}</p>
             </div>
         </div>
 

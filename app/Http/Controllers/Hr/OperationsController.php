@@ -399,6 +399,8 @@ class OperationsController extends Controller
                 }
             }
 
+            $currentSchedule = $scheduleService->currentSubmission($employee);
+
             return [
                 'id' => $employee->id,
                 'initials' => str($employee->full_name)->explode(' ')->take(2)->map(fn ($part) => strtoupper(substr($part, 0, 1)))->join(''),
@@ -408,7 +410,8 @@ class OperationsController extends Controller
                 'tardiness' => $tardiness,
                 'absences' => $scheduleService->countDtrAbsences($employee, $monthStart, $monthEnd),
                 'has_data' => $stats['has_data'],
-                'schedule_summary' => $scheduleService->summarizeSubmission($scheduleService->currentSubmission($employee)),
+                'schedule_summary' => $scheduleService->summarizeSubmission($currentSchedule),
+                'weekly_work_hours' => $scheduleService->weeklyWorkHoursLabel($currentSchedule),
             ];
         })->when($attendanceStatus !== 'all', function ($collection) use ($attendanceStatus) {
             return $collection->filter(function (array $card) use ($attendanceStatus) {
@@ -506,6 +509,7 @@ class OperationsController extends Controller
                 'summary' => $summary,
                 'period_label' => $selectedDate->format('F Y'),
                 'schedule_summary' => $scheduleService->summarizeSubmission($employee ? $scheduleService->approvedSubmissionForDate($employee, $selectedDate) : null),
+                'weekly_work_hours' => $scheduleService->weeklyWorkHoursLabel($employee ? $scheduleService->approvedSubmissionForDate($employee, $selectedDate) : null),
                 'periods' => $periods,
                 'selectedMonth' => $month,
                 'selectedYear' => $year,
