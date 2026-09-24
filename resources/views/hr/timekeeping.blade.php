@@ -111,16 +111,16 @@
     <article class="rounded-xl border border-slate-300 bg-white p-3 shadow-sm">
         <div class="grid grid-cols-1 gap-2 md:grid-cols-4">
             <form method="GET" action="{{ route('timekeeping.index') }}" class="md:col-span-4 min-w-0">
-                <div class="flex min-w-0 flex-col gap-3 md:flex-row">
+                <div class="grid min-w-0 grid-cols-1 gap-2 md:grid-cols-[1.6fr_1.1fr_1.35fr_1.45fr_1.1fr]">
                     <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Search by name, email, ID, or department..."
-                           class="w-full min-w-0 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none md:w-[22rem] md:flex-none">
+                           class="w-full min-w-0 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
 
                     <select name="period" onchange="
                         var parts = this.value.split('-');
                         this.form.querySelector('[name=month]').value = parts[0];
                         this.form.querySelector('[name=year]').value = parts[1];
                         this.form.submit();
-                    " class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none md:w-[13rem] md:flex-none">
+                    " class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
                         @if(isset($periods))
                             @foreach($periods as $p)
                                 <option value="{{ $p['month'] }}-{{ $p['year'] }}" @selected($p['month'] == ($selectedMonth ?? now()->month) && $p['year'] == ($selectedYear ?? now()->year))>{{ $p['label'] }}</option>
@@ -131,13 +131,13 @@
                         @endif
                     </select>
 
-                    <select name="employee_class" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none md:w-[15rem] md:flex-none">
+                    <select name="employee_class" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
                         <option value="all" @selected(($employeeClass ?? 'all') === 'all')>All Employee Types</option>
                         <option value="regular" @selected(($employeeClass ?? '') === 'regular')>Full - Time Employees</option>
                         <option value="irregular" @selected(($employeeClass ?? '') === 'irregular')>Probationary Employees</option>
                     </select>
 
-                    <select name="department_id" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none md:w-[17rem] md:flex-none">
+                    <select name="department_id" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
                         <option value="" @selected(empty($filters['department_id'] ?? ''))>All Departments</option>
                         <option value="asp" @selected(($filters['department_id'] ?? '') === 'asp')>Admin Support Personnel (ASP)</option>
                         @if(isset($departments))
@@ -147,7 +147,7 @@
                         @endif
                     </select>
 
-                    <select name="attendance_range" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none md:w-[13rem] md:flex-none">
+                    <select name="attendance_range" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
                         <option value="month" @selected(($filters['attendance_range'] ?? 'month') === 'month')>Total Month</option>
                         <option value="first_half" @selected(($filters['attendance_range'] ?? '') === 'first_half')>1st-15th</option>
                         <option value="second_half" @selected(($filters['attendance_range'] ?? '') === 'second_half')>16th-End</option>
