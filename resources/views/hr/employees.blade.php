@@ -257,7 +257,7 @@
                                                         data-employee-hire-date="{{ $employee->hire_date?->format('Y-m-d') }}"
                                                         @click="open = false"
                                                         class="mb-1 block rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-800 hover:bg-slate-50">View Details</a>
-                                                    <a href="{{ route('employees.profile') }}" @click="open = false" class="mb-1 block rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-800 hover:bg-slate-50">View Profile</a>
+                                                    <a href="{{ route('employees.profile', ['employee' => $employee->id]) }}" @click="open = false" class="mb-1 block rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-800 hover:bg-slate-50">View Profile</a>
                                                 </div>
                                             </template>
                                         </div>
