@@ -407,7 +407,7 @@ class OperationsController extends Controller
                 'department' => $employee->department?->name ?? 'Unassigned',
                 'present' => $present,
                 'tardiness' => $tardiness,
-                'absences' => $scheduleService->countDtrAbsences($employee, $monthStart, $monthEnd),
+                'absences' => $scheduleService->countDtrAbsences($employee, $attendanceStart, $attendanceEnd),
                 'has_data' => $stats['has_data'],
                 'schedule_summary' => $scheduleService->summarizeSubmission($currentSchedule),
                 'weekly_work_hours' => $scheduleService->weeklyWorkHoursLabel($currentSchedule),
@@ -460,7 +460,9 @@ class OperationsController extends Controller
             $employeeId = $request->integer('employee');
             $month = $request->integer('month', (int) now()->month);
             $year = $request->integer('year', (int) now()->year);
+            $attendanceRange = $this->normalizeAttendanceRange($request->string('attendance_range')->toString());
             $selectedDate = Carbon::createFromDate($year, $month, 1);
+            [$attendanceStart, $attendanceEnd, $rangeLabel] = $this->attendanceDateRange($selectedDate, $attendanceRange);
 
             $employee = Employee::query()
                 ->with('department')
@@ -469,7 +471,7 @@ class OperationsController extends Controller
                 ->orderBy('first_name')
                 ->first();
 
-            $records = $this->buildAttendanceRows($employee, $selectedDate);
+            $records = $this->buildAttendanceRows($employee, $selectedDate, $attendanceStart, $attendanceEnd);
 
             $summary = [
                 'present_days' => $records->where('status', 'Present')->count(),
@@ -495,12 +497,14 @@ class OperationsController extends Controller
                 'employee' => $employee,
                 'records' => $records,
                 'summary' => $summary,
-                'period_label' => $selectedDate->format('F Y'),
+                'period_label' => $selectedDate->format('F Y').' | '.$rangeLabel,
                 'schedule_summary' => $scheduleService->summarizeSubmission($employee ? $scheduleService->approvedSubmissionForDate($employee, $selectedDate) : null),
                 'weekly_work_hours' => $scheduleService->weeklyWorkHoursLabel($employee ? $scheduleService->approvedSubmissionForDate($employee, $selectedDate) : null),
                 'periods' => $periods,
                 'selectedMonth' => $month,
                 'selectedYear' => $year,
+                'attendanceRange' => $attendanceRange,
+                'rangeLabel' => $rangeLabel,
             ]);
         } catch (\Throwable $e) {
             return back()
@@ -516,13 +520,15 @@ class OperationsController extends Controller
             $employeeId = $request->integer('employee');
             $month = $request->integer('month', (int) now()->month);
             $year = $request->integer('year', (int) now()->year);
+            $attendanceRange = $this->normalizeAttendanceRange($request->string('attendance_range')->toString());
             $selectedDate = Carbon::createFromDate($year, $month, 1);
+            [$attendanceStart, $attendanceEnd, $rangeLabel] = $this->attendanceDateRange($selectedDate, $attendanceRange);
 
             $employee = Employee::query()->with('department')
                 ->when($employeeId, fn ($q) => $q->whereKey($employeeId))
                 ->orderBy('last_name')->first();
 
-            $records = $this->buildAttendanceRows($employee, $selectedDate);
+            $records = $this->buildAttendanceRows($employee, $selectedDate, $attendanceStart, $attendanceEnd);
             $summary = [
                 'present_days' => $records->where('status', 'Present')->count(),
                 'absent_days' => $records->where('status', 'Not Present')->count(),
@@ -534,7 +540,7 @@ class OperationsController extends Controller
                 'employee' => $employee,
                 'records' => $records,
                 'summary' => $summary,
-                'period_label' => $selectedDate->format('F Y'),
+                'period_label' => $selectedDate->format('F Y').' | '.$rangeLabel,
                 'schedule_summary' => $scheduleService->summarizeSubmission($employee ? $scheduleService->approvedSubmissionForDate($employee, $selectedDate) : null),
             ]);
 
@@ -554,13 +560,15 @@ class OperationsController extends Controller
             $employeeId = $request->integer('employee');
             $month = $request->integer('month', (int) now()->month);
             $year = $request->integer('year', (int) now()->year);
+            $attendanceRange = $this->normalizeAttendanceRange($request->string('attendance_range')->toString());
             $selectedDate = Carbon::createFromDate($year, $month, 1);
+            [$attendanceStart, $attendanceEnd, $rangeLabel] = $this->attendanceDateRange($selectedDate, $attendanceRange);
 
             $employee = Employee::query()->with('department')
                 ->when($employeeId, fn ($q) => $q->whereKey($employeeId))
                 ->orderBy('last_name')->first();
 
-            $records = $this->buildAttendanceRows($employee, $selectedDate);
+            $records = $this->buildAttendanceRows($employee, $selectedDate, $attendanceStart, $attendanceEnd);
 
             $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
@@ -568,7 +576,7 @@ class OperationsController extends Controller
 
             // Header
             $sheet->setCellValue('A1', 'Daily Time Record - ' . ($employee?->full_name ?? 'Employee'));
-            $sheet->setCellValue('A2', 'Period: ' . $selectedDate->format('F Y'));
+            $sheet->setCellValue('A2', 'Period: ' . $selectedDate->format('F Y').' | '.$rangeLabel);
             $sheet->mergeCells('A1:G1');
             $sheet->mergeCells('A2:G2');
             $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
@@ -1920,14 +1928,38 @@ class OperationsController extends Controller
         return $time;
     }
 
-    private function buildAttendanceRows(?Employee $employee, ?Carbon $selectedDate = null): Collection
+    private function normalizeAttendanceRange(string $attendanceRange): string
+    {
+        return in_array($attendanceRange, ['first_half', 'second_half'], true)
+            ? $attendanceRange
+            : 'month';
+    }
+
+    private function attendanceDateRange(Carbon $selectedDate, string $attendanceRange): array
+    {
+        $monthStart = $selectedDate->copy()->startOfMonth();
+        $monthEnd = $selectedDate->copy()->endOfMonth();
+
+        return match ($attendanceRange) {
+            'first_half' => [$monthStart->copy()->startOfDay(), $monthStart->copy()->day(15)->endOfDay(), '1st-15th'],
+            'second_half' => [$monthStart->copy()->day(16)->startOfDay(), $monthEnd->copy()->endOfDay(), '16th-End'],
+            default => [$monthStart->copy()->startOfDay(), $monthEnd->copy()->endOfDay(), 'Total Month'],
+        };
+    }
+
+    private function buildAttendanceRows(
+        ?Employee $employee,
+        ?Carbon $selectedDate = null,
+        ?Carbon $attendanceStart = null,
+        ?Carbon $attendanceEnd = null,
+    ): Collection
     {
         $baseDate = $selectedDate ?? now();
         $systemStart = Carbon::create(2026, 4, 1)->startOfDay();
-        $periodStart = $baseDate->copy()->startOfMonth()->max($systemStart);
-        $periodEnd = $baseDate->isSameMonth(now())
+        $periodStart = ($attendanceStart ?? $baseDate->copy()->startOfMonth())->copy()->max($systemStart);
+        $periodEnd = ($attendanceEnd ?? ($baseDate->isSameMonth(now())
             ? now()->copy()->endOfDay()
-            : ($baseDate->isFuture() ? $baseDate->copy()->startOfMonth()->subDay()->endOfDay() : $baseDate->copy()->endOfMonth());
+            : ($baseDate->isFuture() ? $baseDate->copy()->startOfMonth()->subDay()->endOfDay() : $baseDate->copy()->endOfMonth())))->copy()->min(now()->endOfDay());
 
         if ($periodEnd->lt($periodStart)) {
             return collect();
@@ -1940,7 +1972,7 @@ class OperationsController extends Controller
 
         if ($employee) {
             $dbRecords = AttendanceRecord::where('employee_id', $employee->id)
-                ->whereBetween('record_date', [$baseDate->copy()->startOfMonth(), $baseDate->copy()->endOfMonth()])
+                ->whereBetween('record_date', [$periodStart, $periodEnd])
                 ->get()
                 ->keyBy(fn ($r) => $r->record_date->format('Y-m-d'));
         }

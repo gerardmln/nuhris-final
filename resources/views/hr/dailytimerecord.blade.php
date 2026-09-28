@@ -51,6 +51,13 @@
                                 </option>
                             @endforeach
                         </select>
+                        <select name="attendance_range" onchange="this.form.submit();"
+                                data-testid="dtr-attendance-range-selector"
+                                class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-400 focus:outline-none sm:w-auto">
+                            <option value="month" @selected(($attendanceRange ?? 'month') === 'month')>Total Month</option>
+                            <option value="first_half" @selected(($attendanceRange ?? '') === 'first_half')>1st-15th</option>
+                            <option value="second_half" @selected(($attendanceRange ?? '') === 'second_half')>16th-End</option>
+                        </select>
                         <input type="hidden" name="month" value="{{ $selectedMonth }}">
                         <input type="hidden" name="year" value="{{ $selectedYear }}">
                     </form>
@@ -79,13 +86,13 @@
 
         {{-- Export Buttons --}}
         <div class="flex flex-wrap gap-2" data-testid="export-buttons">
-            <a href="{{ route('timekeeping.dtr.export-pdf', ['employee' => $employee?->id, 'month' => $selectedMonth, 'year' => $selectedYear]) }}"
+            <a href="{{ route('timekeeping.dtr.export-pdf', ['employee' => $employee?->id, 'month' => $selectedMonth, 'year' => $selectedYear, 'attendance_range' => $attendanceRange ?? 'month']) }}"
                data-testid="export-pdf-button"
                class="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 Export PDF
             </a>
-            <a href="{{ route('timekeeping.dtr.export-excel', ['employee' => $employee?->id, 'month' => $selectedMonth, 'year' => $selectedYear]) }}"
+            <a href="{{ route('timekeeping.dtr.export-excel', ['employee' => $employee?->id, 'month' => $selectedMonth, 'year' => $selectedYear, 'attendance_range' => $attendanceRange ?? 'month']) }}"
                data-testid="export-excel-button"
                class="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
