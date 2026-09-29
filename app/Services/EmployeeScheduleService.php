@@ -234,6 +234,19 @@ class EmployeeScheduleService
                 ];
             }
 
+            if ($timeIn || $timeOut) {
+                return [
+                    'schedule_status' => 'validated',
+                    'schedule_notes' => 'Academic calendar non-working date: present due to attendance record',
+                    'scheduled_time_in' => null,
+                    'scheduled_time_out' => null,
+                    'tardiness_minutes' => 0,
+                    'undertime_minutes' => 0,
+                    'overtime_minutes' => 0,
+                    'status' => 'present',
+                ];
+            }
+
             return [
                 'schedule_status' => 'non_working_day',
                 'schedule_notes' => 'Academic calendar non-working date',
@@ -242,11 +255,24 @@ class EmployeeScheduleService
                 'tardiness_minutes' => 0,
                 'undertime_minutes' => 0,
                 'overtime_minutes' => 0,
-                'status' => 'present',
+                'status' => 'absent',
             ];
         }
 
         if ($submission && $scheduleDay && ! $scheduleDay->has_work && $academicDayType !== 'working') {
+            if (($timeIn || $timeOut) && app(LeaveMonitoringService::class)->isRegularEmployee($employee, $date)) {
+                return [
+                    'schedule_status' => 'validated',
+                    'schedule_notes' => 'Non-working day: present due to attendance record',
+                    'scheduled_time_in' => null,
+                    'scheduled_time_out' => null,
+                    'tardiness_minutes' => 0,
+                    'undertime_minutes' => 0,
+                    'overtime_minutes' => 0,
+                    'status' => 'present',
+                ];
+            }
+
             return [
                 'schedule_status' => 'non_working_day',
                 'schedule_notes' => 'Non-working day',
