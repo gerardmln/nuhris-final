@@ -65,10 +65,14 @@
             </div>
         </article>
 
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm" data-testid="present-days-card">
                 <p class="text-xs text-slate-500">Present Days</p>
                 <p class="text-3xl font-extrabold text-emerald-700">{{ $summary['present_days'] }}</p>
+            </article>
+            <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm" data-testid="present-working-days-card">
+                <p class="text-xs text-slate-500">Present / Working Days</p>
+                <p class="text-3xl font-extrabold text-teal-700">{{ $summary['present_working_days'] }} / {{ $summary['working_days'] }}</p>
             </article>
             <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm" data-testid="absent-days-card">
                 <p class="text-xs text-slate-500">Absent Days</p>
@@ -81,6 +85,12 @@
             <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm" data-testid="undertime-card">
                 <p class="text-xs text-slate-500">Total Undertime</p>
                 <p class="text-3xl font-extrabold text-violet-600">{{ $summary['undertime_total'] }} min</p>
+            </article>
+            <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm" data-testid="worked-hours-card">
+                <p class="text-xs text-slate-500">Total Hours Worked</p>
+                <p class="text-3xl font-extrabold text-blue-700">
+                    {{ intdiv($summary['worked_minutes'], 60) }}h {{ str_pad($summary['worked_minutes'] % 60, 2, '0', STR_PAD_LEFT) }}m
+                </p>
             </article>
         </div>
 

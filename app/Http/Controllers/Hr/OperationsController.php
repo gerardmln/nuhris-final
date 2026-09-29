@@ -472,12 +472,29 @@ class OperationsController extends Controller
                 ->first();
 
             $records = $this->buildAttendanceRows($employee, $selectedDate, $attendanceStart, $attendanceEnd);
+            $workingDayRecords = $records->filter(fn (array $record): bool => (bool) ($record['is_scheduled_workday'] ?? false));
 
             $summary = [
                 'present_days' => $records->where('status', 'Present')->count(),
+                'present_working_days' => $workingDayRecords->where('status', 'Present')->count(),
+                'working_days' => $workingDayRecords->count(),
                 'absent_days' => $records->where('status', 'Not Present')->count(),
                 'tardiness_total' => $records->sum('tardiness_minutes'),
                 'undertime_total' => $records->sum('undertime_minutes'),
+                'worked_minutes' => $records->sum(function (array $record): int {
+                    if ($record['time_in'] === '-' || $record['time_out'] === '-') {
+                        return 0;
+                    }
+
+                    $timeIn = Carbon::createFromFormat('H:i', $record['time_in']);
+                    $timeOut = Carbon::createFromFormat('H:i', $record['time_out']);
+
+                    if ($timeOut->lt($timeIn)) {
+                        $timeOut->addDay();
+                    }
+
+                    return $timeIn->diffInMinutes($timeOut);
+                }),
             ];
 
             $periods = collect();
@@ -2011,6 +2028,8 @@ class OperationsController extends Controller
                     }
 
                     $record = $dbRecords->get($dateKey);
+                    $submission = $scheduleService->approvedSubmissionForDate($employee, $date);
+                    $scheduleDay = $submission?->days->firstWhere('day_index', (int) $date->dayOfWeekIso);
                     $evaluation = $scheduleService->evaluateDailyRecord(
                         $employee,
                         $date,
@@ -2033,6 +2052,7 @@ class OperationsController extends Controller
                         'undertime_minutes' => $evaluation['undertime_minutes'],
                         'schedule_status' => $evaluation['schedule_status'],
                         'schedule_notes' => $evaluation['schedule_notes'],
+                        'is_scheduled_workday' => (bool) ($scheduleDay?->has_work),
                         'status' => $statusLabel,
                     ];
                 }
