@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'user.type' => \App\Http\Middleware\EnsureUserType::class,
+            'privacy.notice' => \App\Http\Middleware\EnsurePrivacyNoticeAcknowledged::class,
         ]);
 
         $middleware->trustProxies(at: '*');

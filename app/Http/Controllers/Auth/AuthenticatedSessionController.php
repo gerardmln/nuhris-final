@@ -44,6 +44,12 @@ class AuthenticatedSessionController extends Controller
             default => 'employee.dashboard',
         };
 
+        if (! $request->user()->privacyNoticeAcknowledgments()
+            ->where('privacy_notice_version', config('privacy.notice_version', '1.0'))
+            ->exists()) {
+            return redirect()->route('privacy.notice');
+        }
+
         return redirect()->intended(route($targetRoute, absolute: false));
     }
 

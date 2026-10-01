@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PrivacyNoticeController;
 use App\Http\Controllers\Admin\PortalController as AdminPortalController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\AcademicCalendarController;
@@ -20,8 +21,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
+Route::middleware('auth')->group(function () {
+    Route::get('/privacy-notice', [PrivacyNoticeController::class, 'show'])->name('privacy.notice');
+    Route::post('/privacy-notice/acknowledge', [PrivacyNoticeController::class, 'acknowledge'])->name('privacy.notice.acknowledge');
+});
+
 // HR Module Routes
-Route::prefix('hr')->middleware(['auth', 'user.type:2'])->group(function () {
+Route::prefix('hr')->middleware(['auth', 'user.type:2', 'privacy.notice'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.show');
@@ -144,7 +150,7 @@ Route::prefix('hr')->middleware(['auth', 'user.type:2'])->group(function () {
 });
 
 // Employee (User) Module Routes
-Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3'])->group(function () {
+Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3', 'privacy.notice'])->group(function () {
     Route::get('/', function () {
         return redirect()->route('employee.dashboard');
     });
@@ -230,7 +236,7 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3']
 });
 
 // Admin (User) Module Routes
-Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1'])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'privacy.notice'])->group(function () {
     Route::get('/', function () {
         return redirect()->route('admin.dashboard');
     });
@@ -376,7 +382,7 @@ Route::get('/', function () {
 /*
 Keep profile protected, or remove this whole group if you want everything public.
 */
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'privacy.notice'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

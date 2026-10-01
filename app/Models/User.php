@@ -62,6 +62,11 @@ class User extends Authenticatable
         return $this->hasMany(AnnouncementNotification::class);
     }
 
+    public function privacyNoticeAcknowledgments(): HasMany
+    {
+        return $this->hasMany(PrivacyNoticeAcknowledgment::class);
+    }
+
     public function visibleAnnouncementNotifications(): HasMany
     {
         return $this->announcementNotifications()->visible();
