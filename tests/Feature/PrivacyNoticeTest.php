@@ -38,7 +38,7 @@ class PrivacyNoticeTest extends TestCase
         $this->actingAs($user)->get(route('dashboard'))->assertOk();
     }
 
-    public function test_new_notice_version_requires_a_new_acknowledgment(): void
+    public function test_a_previous_database_acknowledgment_does_not_skip_a_new_login(): void
     {
         $user = User::factory()->create(['user_type' => User::TYPE_HR]);
         PrivacyNoticeAcknowledgment::create([
@@ -46,9 +46,21 @@ class PrivacyNoticeTest extends TestCase
             'privacy_notice_version' => '1.0',
             'acknowledged_at' => now(),
         ]);
-        config(['privacy.notice_version' => '2.0']);
 
         $response = $this->actingAs($user)->get(route('dashboard'));
+
+        $response->assertRedirect(route('privacy.notice'));
+    }
+
+    public function test_a_new_notice_version_requires_acknowledgment_in_the_current_session(): void
+    {
+        $user = User::factory()->create(['user_type' => User::TYPE_HR]);
+        $this->actingAs($user)->withSession([
+            'privacy_notice_acknowledged_version' => '1.0',
+        ]);
+        config(['privacy.notice_version' => '2.0']);
+
+        $response = $this->get(route('dashboard'));
 
         $response->assertRedirect(route('privacy.notice'));
     }

@@ -13,9 +13,7 @@ class EnsurePrivacyNoticeAcknowledged
         $user = $request->user();
         $version = (string) config('privacy.notice_version', '1.0');
 
-        if (! $user || $user->privacyNoticeAcknowledgments()
-            ->where('privacy_notice_version', $version)
-            ->exists()) {
+        if (! $user || $request->session()->get('privacy_notice_acknowledged_version') === $version) {
             return $next($request);
         }
 

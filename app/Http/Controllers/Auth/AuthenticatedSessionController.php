@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Models\User;
 use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,6 +28,7 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+        $request->session()->forget('privacy_notice_acknowledged_version');
 
         app(AuditLogService::class)->record(
             'LOGIN',
@@ -38,19 +38,7 @@ class AuthenticatedSessionController extends Controller
             ['email' => $request->user()->email]
         );
 
-        $targetRoute = match ((int) $request->user()->user_type) {
-            User::TYPE_ADMIN => 'admin.dashboard',
-            User::TYPE_HR => 'dashboard',
-            default => 'employee.dashboard',
-        };
-
-        if (! $request->user()->privacyNoticeAcknowledgments()
-            ->where('privacy_notice_version', config('privacy.notice_version', '1.0'))
-            ->exists()) {
-            return redirect()->route('privacy.notice');
-        }
-
-        return redirect()->intended(route($targetRoute, absolute: false));
+        return redirect()->route('privacy.notice');
     }
 
     /**

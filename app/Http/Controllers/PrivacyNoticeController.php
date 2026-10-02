@@ -15,7 +15,7 @@ class PrivacyNoticeController extends Controller
     {
         $version = (string) config('privacy.notice_version', '1.0');
 
-        if ($this->hasAcknowledged($request, $version)) {
+        if ($request->session()->get('privacy_notice_acknowledged_version') === $version) {
             return redirect()->intended($this->dashboardRoute($request));
         }
 
@@ -44,6 +44,8 @@ class PrivacyNoticeController extends Controller
             );
         });
 
+        $request->session()->put('privacy_notice_acknowledged_version', $version);
+
         app(AuditLogService::class)->record(
             'PRIVACY_NOTICE_ACKNOWLEDGED',
             'Privacy Notice',
@@ -54,13 +56,6 @@ class PrivacyNoticeController extends Controller
         );
 
         return redirect()->intended($this->dashboardRoute($request));
-    }
-
-    private function hasAcknowledged(Request $request, string $version): bool
-    {
-        return $request->user()?->privacyNoticeAcknowledgments()
-            ->where('privacy_notice_version', $version)
-            ->exists() ?? false;
     }
 
     private function dashboardRoute(Request $request): string
