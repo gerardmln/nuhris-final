@@ -26,7 +26,7 @@
                 <div class="space-y-7 text-sm leading-6 text-slate-700">
                     <section>
                         <h2 class="text-lg font-bold text-[#1f2b5d]">1. Introduction</h2>
-                        <p class="mt-2">The National University HR Platform processes personal information necessary to provide HR-related services and operate the platform. This includes employee administration, authentication, credential workflows, timekeeping, leave and schedule management, work-from-home monitoring, notifications, reporting, and system security.</p>
+                        <p class="mt-2">The National University HR Platform processes personal information necessary to provide HR-related services and operate the platform. This includes employee administration, authentication, degree information, timekeeping, leave and schedule management, work-from-home monitoring, notifications, reporting, and system security.</p>
                     </section>
 
                     <section>
@@ -34,11 +34,11 @@
                         <div class="mt-3 space-y-4">
                             <div><h3 class="font-semibold text-slate-900">Identity and contact information</h3><p>Employee ID, first name, last name, email address, mobile number, address, department, position, employee type, faculty ranking, employment status, hire date, and official work schedule or time information.</p></div>
                             <div><h3 class="font-semibold text-slate-900">Account and authentication information</h3><p>Account name, email address, password hashes, role, email-verification status, password-reset information, session information, IP address, and user-agent information.</p></div>
-                            <div><h3 class="font-semibold text-slate-900">Employee credentials and uploaded documents</h3><p>Credential type, title, expiration date, description, original filename, storage path, credential status, reviewer, review date, and review notes. Employees may submit resumes, PRC or license documents, seminar or training documents, academic-degree documents, and ranking documents. Uploaded documents could contain additional information depending on what the employee submits.</p></div>
+                            <div><h3 class="font-semibold text-slate-900">Degree information</h3><p>Degree level, degree title, description, submitted document details, submission status, reviewer, review date, and review notes. Degree documents may contain additional information depending on what the employee submits.</p></div>
                             <div><h3 class="font-semibold text-slate-900">Attendance and DTR information</h3><p>Attendance dates, time-in, time-out, scheduled times, tardiness, undertime, overtime, schedule status, attendance status, and system-generated attendance notes or calculations.</p></div>
                             <div><h3 class="font-semibold text-slate-900">Leave information</h3><p>Leave type, leave dates, leave reason, days deducted, leave status, cutoff date, and remaining leave balances.</p></div>
                             <div><h3 class="font-semibold text-slate-900">Schedule information</h3><p>Submitted terms or academic years, working days, work indicators, scheduled times, submission status, review information, and review notes.</p></div>
-                            <div><h3 class="font-semibold text-slate-900">WFH monitoring information</h3><p>WFH dates, time-in and time-out information, monitoring files, original filenames, submission status, reviewer information, and review notes.</p></div>
+                            <div><h3 class="font-semibold text-slate-900">WFH monitoring information</h3><p>WFH dates, time-in and time-out information, monitoring link, submission status, reviewer information, and review notes.</p></div>
                             <div><h3 class="font-semibold text-slate-900">Notifications, announcements, and system activity</h3><p>Announcements, notification recipients, read status, read timestamps, redirect links, account activity, audit actions, audit descriptions, timestamps, IP addresses, and selected audit metadata.</p></div>
                         </div>
                     </section>
@@ -48,7 +48,7 @@
                         <ul class="mt-2 list-disc space-y-1 pl-5">
                             <li>Employee administration and maintenance of HR records.</li>
                             <li>Account authentication, password management, session management, and security.</li>
-                            <li>Credential submission, verification, expiration monitoring, and review.</li>
+                            <li>Degree submission and review.</li>
                             <li>Attendance and DTR management, calculations, and reporting.</li>
                             <li>Leave management, leave balances, eligibility rules, and attendance updates.</li>
                             <li>Schedule submission, review, approval, and attendance evaluation.</li>
@@ -64,15 +64,14 @@
                         <p class="mt-2">Biometric DTR PDF files are processed using <span class="font-semibold">smalot/pdfparser</span>. The system extracts text and uses recognized employee, date, and time values to create or update structured attendance records.</p>
                         <p class="mt-2">Excel files are processed using <span class="font-semibold">PhpSpreadsheet</span>. The system extracts relevant date, time, employee, leave, and status values from supported spreadsheets to create or update structured attendance or leave records.</p>
                         <p class="mt-2">The system can automatically calculate attendance-related information such as tardiness, undertime, overtime, schedule status, and attendance status. HR/Admin workflows remain involved in reviewing and approving relevant records.</p>
-                        <p class="mt-2">The system does not use AI to analyze employee credentials, does not OCR credential documents, does not use an external AI document-processing service, and does not automatically decide whether a credential should be approved.</p>
                     </section>
 
                     <section>
                         <h2 class="text-lg font-bold text-[#1f2b5d]">5. Role-Based Access</h2>
                         <div class="mt-3 space-y-3">
-                            <p><span class="font-semibold text-slate-900">Employee:</span> Primarily accesses their own profile and HR records. Employees can manage their own credentials, schedules, WFH submissions, account information, and notifications, and view their own HR-related information available through the employee module.</p>
-                            <p><span class="font-semibold text-slate-900">HR:</span> Can access and manage employee HR records needed for HR operations, including employee records, credentials, DTRs, leave information, schedules, WFH submissions, announcements, and related review workflows according to the implemented permissions.</p>
-                            <p><span class="font-semibold text-slate-900">Admin:</span> Has broader administrative access, including employee management, credential and file deletion, DTR and WFH administration, schedule administration, role management, configuration, reports, and audit logs according to the implemented permissions.</p>
+                            <p><span class="font-semibold text-slate-900">Employee:</span> Primarily accesses their own profile and HR records. Employees can manage their own degree information, schedules, WFH submissions, account information, and notifications, and view their own HR-related information available through the employee module.</p>
+                            <p><span class="font-semibold text-slate-900">HR:</span> Can access and manage employee HR records needed for HR operations, including employee records, degree information, DTRs, leave information, schedules, WFH submissions, announcements, and related review workflows according to the implemented permissions.</p>
+                            <p><span class="font-semibold text-slate-900">Admin:</span> Has broader administrative access, including employee management, degree information and document deletion, DTR and WFH administration, schedule administration, role management, configuration, reports, and audit logs according to the implemented permissions.</p>
                         </div>
                     </section>
 
@@ -80,9 +79,9 @@
                         <h2 class="text-lg font-bold text-[#1f2b5d]">6. Third-Party and External Services</h2>
                         <ul class="mt-2 list-disc space-y-1 pl-5">
                             <li><span class="font-semibold">Supabase PostgreSQL:</span> The configured application database stores HR platform records.</li>
-                            <li><span class="font-semibold">Supabase Storage:</span> Credential and WFH uploaded files are stored in the configured storage bucket and are accessed through temporary signed URLs.</li>
+                            <li><span class="font-semibold">Supabase Storage:</span> Submitted degree documents are stored in the configured storage bucket and are accessed through temporary signed URLs.</li>
                             <li><span class="font-semibold">Supabase Auth Admin API:</span> User email, role-related metadata, and password synchronization data may be sent for account provisioning, password updates, or account deletion.</li>
-                            <li><span class="font-semibold">Gmail SMTP:</span> The configured mail service is used for application email workflows such as employee credentials, password resets, and email verification.</li>
+                            <li><span class="font-semibold">Gmail SMTP:</span> The configured mail service is used for application email workflows such as password resets and email verification.</li>
                             <li><span class="font-semibold">Local processing libraries:</span> smalot/pdfparser, PhpSpreadsheet, and DomPDF process imported or generated documents within the application workflow.</li>
                         </ul>
                         <p class="mt-3">Hostinger is not identified in the code as receiving application data. It appears only in deployment-related comments.</p>
@@ -90,7 +89,7 @@
 
                     <section>
                         <h2 class="text-lg font-bold text-[#1f2b5d]">7. Data Retention and Deletion</h2>
-                        <p class="mt-2">The platform provides deletion or clearing functions for certain employee records, credential records and files, attendance/DTR records, leave records, WFH records and files, schedule records, notifications, announcements, and other administrative records where applicable.</p>
+                        <p class="mt-2">The platform provides deletion or clearing functions for certain employee records, degree records and documents, attendance/DTR records, leave records, WFH records, schedule records, notifications, announcements, and other administrative records where applicable.</p>
                         <p class="mt-2">Specific retention periods are not currently defined in the application code. Personal data is retained only for as long as necessary for the applicable HR, operational, legal, or institutional requirements. Specific retention periods may be governed by applicable National University policies and records-management requirements. This statement does not establish or claim a specific National University retention period.</p>
                     </section>
 
@@ -101,7 +100,7 @@
                             <li>Password hashing, password-reset expiration, and login rate limiting.</li>
                             <li>Session regeneration after login and session invalidation on logout.</li>
                             <li>CSRF protection and input/file validation.</li>
-                            <li>Ownership checks for employee credential and WFH file access.</li>
+                            <li>Ownership checks for employee degree documents and WFH submission access.</li>
                             <li>Temporary signed Supabase Storage URLs for file viewing.</li>
                             <li>Database SSL requirement in the configured environment.</li>
                             <li>Audit logging and filtering of passwords, tokens, keys, secrets, and uploaded file values from audit metadata.</li>
@@ -111,7 +110,7 @@
 
                     <section>
                         <h2 class="text-lg font-bold text-[#1f2b5d]">9. Data Sources</h2>
-                        <p class="mt-2">Personal data may come from employees, HR personnel, administrators, uploaded credential documents, imported biometric DTR PDFs, imported leave Excel files, WFH submissions, schedule submissions, authentication and session activity, and system-generated calculations.</p>
+                        <p class="mt-2">Personal data may come from employees, HR personnel, administrators, submitted degree documents, imported biometric DTR PDFs, imported leave Excel files, WFH submissions and monitoring links, schedule submissions, authentication and session activity, and system-generated calculations.</p>
                     </section>
 
                     <section>

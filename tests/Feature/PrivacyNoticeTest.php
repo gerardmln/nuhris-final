@@ -32,7 +32,7 @@ class PrivacyNoticeTest extends TestCase
         $response->assertRedirect(route('dashboard'));
         $this->assertDatabaseHas('privacy_notice_acknowledgments', [
             'user_id' => $user->id,
-            'privacy_notice_version' => '1.0',
+            'privacy_notice_version' => config('privacy.notice_version'),
         ]);
 
         $this->actingAs($user)->get(route('dashboard'))->assertOk();

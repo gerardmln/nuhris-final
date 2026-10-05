@@ -25,7 +25,7 @@ class PasswordChangeTest extends TestCase
         });
 
         $response = $this->withSession([
-            'privacy_notice_acknowledged_version' => '1.0',
+            'privacy_notice_acknowledged_version' => config('privacy.notice_version'),
         ])->actingAs($user)->from(route('employee.profile'))->post(route('employee.profile.change-password'), [
             'current_password' => 'password',
             'new_password' => 'new-password',

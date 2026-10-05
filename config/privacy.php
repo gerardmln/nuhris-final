@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'notice_version' => '1.0',
+    'notice_version' => '1.1',
 ];
