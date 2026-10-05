@@ -180,6 +180,36 @@ class RoleManagementController extends Controller
             ->with('credential_notice', ['email' => $user->email, 'email_status' => $emailStatus]);
     }
 
+    public function destroy(Request $request, User $user): RedirectResponse
+    {
+        if ($user->user_type === User::TYPE_ADMIN) {
+            return redirect()->route('admin.roles.index')
+                ->with('error', 'Admin users cannot be deleted.');
+        }
+
+        if ($user->user_type === User::TYPE_EMPLOYEE) {
+            return redirect()->route('admin.roles.index')
+                ->with('error', 'To delete an employee, go to the Employees module.');
+        }
+
+        $email = $user->email;
+        $userId = $user->id;
+
+        app(SupabaseAuthSyncService::class)->deleteUser($user);
+        $user->delete();
+
+        app(AuditLogService::class)->record(
+            'DELETE',
+            'Role Management',
+            'Deleted HR Timekeeper account for '.$email.'.',
+            'Success',
+            ['user_id' => $userId, 'email' => $email]
+        );
+
+        return redirect()->route('admin.roles.index')
+            ->with('success', "Timekeeper account {$email} has been deleted.");
+    }
+
     private function roleLabel(int $userType): string
     {
         return match ($userType) {

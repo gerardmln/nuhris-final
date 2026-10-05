@@ -317,6 +317,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
     Route::prefix('roles')->name('roles.')->group(function () {
         Route::get('/', [RoleManagementController::class, 'index'])->name('index');
         Route::post('/timekeepers', [RoleManagementController::class, 'addTimekeeper'])->name('timekeepers.store');
+        Route::delete('/{user}', [RoleManagementController::class, 'destroy'])->whereNumber('user')->name('destroy');
         Route::put('/{user}', [RoleManagementController::class, 'updateRole'])->whereNumber('user')->name('update');
     });
 

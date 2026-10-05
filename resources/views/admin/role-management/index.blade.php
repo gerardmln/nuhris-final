@@ -92,7 +92,8 @@
                         <td class="px-6 py-4 text-sm text-slate-600">{{ $user['department'] }}</td>
                         <td class="px-6 py-4 text-sm text-slate-600">{{ $user['status'] }}</td>
                             <td class="px-6 py-4 text-sm">
-                                <form action="{{ route('admin.roles.update', $user['id']) }}" method="POST" class="flex gap-2">
+                                <div class="flex gap-2">
+                                    <form action="{{ route('admin.roles.update', $user['id']) }}" method="POST" class="flex gap-2">
                                     @csrf
                                     @method('PUT')
                                     <select name="user_type" class="px-3 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -101,7 +102,21 @@
                                         @endforeach
                                     </select>
                                     <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-sm font-medium">Save</button>
-                                </form>
+                                    </form>
+                                    @if ($user['user_type'] === \App\Models\User::TYPE_HR)
+                                        <form action="{{ route('admin.roles.destroy', $user['id']) }}" method="POST" onsubmit="return confirm('Delete this HR user? This action cannot be undone.');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-medium">Delete</button>
+                                        </form>
+                                    @else
+                                        <button type="button"
+                                            class="bg-slate-300 text-slate-600 px-3 py-1 rounded text-sm font-medium"
+                                            onclick="alert('{{ $user['user_type'] === \App\Models\User::TYPE_EMPLOYEE ? 'To delete an employee, go to the Employees module.' : 'Admin users cannot be deleted.' }}')">
+                                            Delete
+                                        </button>
+                                    @endif
+                                </div>
                             </td>
                     </tr>
                 @endforeach

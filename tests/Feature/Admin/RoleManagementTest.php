@@ -50,4 +50,28 @@ class RoleManagementTest extends TestCase
         $response->assertRedirect(route('admin.roles.index'));
         $response->assertSessionHasErrors('email');
     }
+
+    public function test_admin_can_delete_an_hr_user_but_not_admin_or_employee_users(): void
+    {
+        $admin = User::factory()->create(['user_type' => User::TYPE_ADMIN]);
+        $hr = User::factory()->create(['user_type' => User::TYPE_HR]);
+        $employee = User::factory()->create(['user_type' => User::TYPE_EMPLOYEE]);
+        $session = ['privacy_notice_acknowledged_version' => config('privacy.notice_version')];
+
+        $response = $this->withSession($session)->actingAs($admin)
+            ->delete(route('admin.roles.destroy', $hr));
+
+        $response->assertSessionHas('success', "Timekeeper account {$hr->email} has been deleted.");
+        $this->assertDatabaseMissing('users', ['id' => $hr->id]);
+
+        $response = $this->withSession($session)->actingAs($admin)
+            ->delete(route('admin.roles.destroy', $admin));
+        $response->assertSessionHas('error', 'Admin users cannot be deleted.');
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
+
+        $response = $this->withSession($session)->actingAs($admin)
+            ->delete(route('admin.roles.destroy', $employee));
+        $response->assertSessionHas('error', 'To delete an employee, go to the Employees module.');
+        $this->assertDatabaseHas('users', ['id' => $employee->id]);
+    }
 }
