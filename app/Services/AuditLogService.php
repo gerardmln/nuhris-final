@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AdminAuditLog;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -40,7 +41,7 @@ class AuditLogService
             }
 
             AdminAuditLog::query()->create([
-                'user_id' => $userId ?? auth()->id(),
+                'user_id' => $userId ?? Auth::id(),
                 'action' => strtoupper($action),
                 'module' => $module,
                 'description' => $description,

@@ -56,7 +56,7 @@ class SupabaseStorageService
             ->post("{$this->baseUrl}/storage/v1/object/{$this->bucket}/{$path}");
 
         if (! $response->successful()) {
-            throw new RuntimeException('Failed to upload file to Supabase storage: ' . $response->body());
+            throw new RuntimeException('Failed to upload file to Supabase storage.');
         }
 
         return $path;

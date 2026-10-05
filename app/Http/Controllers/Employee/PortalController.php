@@ -845,33 +845,24 @@ class PortalController extends Controller
 
         $user = $request->user();
 
-        Log::info('EMPLOYEE PASSWORD CHANGE START', [
-            'user_id' => $user->id,
-            'email' => $user->email,
-        ]);
-
         if (! \Illuminate\Support\Facades\Hash::check($request->input('current_password'), $user->password)) {
             return back()->withErrors([
                 'current_password' => 'The current password you entered is incorrect.',
             ])->with('password_error', true);
         }
 
+        $supabaseAuth = app(SupabaseAuthSyncService::class);
+        $newPassword = $request->input('new_password');
+
+        if ($supabaseAuth->isConfigured() && ! $supabaseAuth->updateUserPassword($user, $newPassword)) {
+            return back()->withErrors([
+                'new_password' => 'Your password could not be synchronized. Please try again.',
+            ])->with('password_error', true);
+        }
+
         $user->forceFill([
-            'password' => \Illuminate\Support\Facades\Hash::make($request->input('new_password')),
+            'password' => \Illuminate\Support\Facades\Hash::make($newPassword),
         ])->save();
-
-        Log::info('EMPLOYEE PASSWORD SYNC START', [
-            'user_id' => $user->id,
-            'email' => $user->email,
-        ]);
-
-        $synced = app(SupabaseAuthSyncService::class)->updateUserPassword($user, $request->input('new_password'));
-
-        Log::info('EMPLOYEE PASSWORD SYNC RESULT', [
-            'user_id' => $user->id,
-            'email' => $user->email,
-            'synced' => $synced,
-        ]);
 
         return redirect()->route('employee.profile')->with('password_success', 'Password changed successfully.');
     }

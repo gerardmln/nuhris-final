@@ -53,7 +53,6 @@ class SupabaseAuthSyncService
                 'user_id' => $user->id,
                 'email' => $user->email,
                 'status' => $response->status(),
-                'body' => $response->body(),
             ]);
 
             return false;
@@ -64,42 +63,15 @@ class SupabaseAuthSyncService
 
     public function updateUserPassword(User $user, string $password): bool
     {
-        Log::info('SUPABASE PASSWORD SYNC CONFIG', [
-            'configured' => $this->isConfigured(),
-            'has_url' => $this->baseUrl !== '',
-            'has_service_key' => $this->serviceKey !== '',
-        ]);
-
         if (! $this->isConfigured() || ! filled($user->email)) {
-            Log::warning('SUPABASE PASSWORD SYNC ABORTED', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-            ]);
-
             return false;
         }
 
         $lookup = $this->findSupabaseUserIdByEmail($user->email);
         $supabaseUserId = $lookup['id'];
-        $supabaseEmail = $lookup['email'];
-
-        Log::info('SUPABASE USER LOOKUP RESULT', [
-            'laravel_user_id' => $user->id,
-            'email' => $user->email,
-            'supabase_user_id' => $supabaseUserId,
-            'supabase_email' => $supabaseEmail,
-        ]);
 
         if (! $supabaseUserId) {
-            $syncResult = $this->syncUser($user, $password);
-
-            Log::info('SUPABASE PASSWORD CREATE RESULT', [
-                'laravel_user_id' => $user->id,
-                'email' => $user->email,
-                'successful' => $syncResult,
-            ]);
-
-            return $syncResult;
+            return $this->syncUser($user, $password);
         }
 
         $response = Http::withHeaders([
@@ -109,14 +81,6 @@ class SupabaseAuthSyncService
         ])->put($this->baseUrl.'/auth/v1/admin/users/'.$supabaseUserId, [
             'password' => $password,
             'email_confirm' => true,
-        ]);
-
-        Log::info('SUPABASE PASSWORD PATCH RESULT', [
-            'laravel_user_id' => $user->id,
-            'email' => $user->email,
-            'supabase_user_id' => $supabaseUserId,
-            'status' => $response->status(),
-            'successful' => $response->successful(),
         ]);
 
         if (! $response->successful()) {
@@ -155,7 +119,6 @@ class SupabaseAuthSyncService
                 'user_id' => $user->id,
                 'email' => $user->email,
                 'status' => $response->status(),
-                'body' => $response->body(),
             ]);
 
             return false;
