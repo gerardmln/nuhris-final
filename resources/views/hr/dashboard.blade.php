@@ -26,25 +26,17 @@
             <section class="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
                 <div>
                     <h2 class="text-3xl font-bold text-[#1f2b5d]">HR Dashboard</h2>
-                    <p class="text-sm text-slate-500">Welcome back! Here is your HR overview.</p>
+                    <p class="text-sm font-semibold text-slate-600">Welcome Back, Human Resources!</p>
                 </div>
 
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    <article class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <article class="h-full rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
                         <p class="text-xs font-medium text-slate-500">Total Employees</p>
                         <p class="mt-1 text-4xl font-extrabold">{{ $stats['total_employees'] }}</p>
                     </article>
-                    <article class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
-                        <p class="text-xs font-medium text-slate-500">Pending Credentials</p>
-                        <p class="mt-1 text-4xl font-extrabold">{{ $stats['pending_credentials'] }}</p>
-                    </article>
-                    <article class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
-                        <p class="text-xs font-medium text-slate-500">Expiring Licenses</p>
-                        <p class="mt-1 text-4xl font-extrabold">{{ $stats['expiring_licenses'] }}</p>
-                    </article>
                 </div>
 
-                <div class="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                <div class="grid grid-cols-1 items-start gap-4 xl:grid-cols-3">
                     <div class="space-y-4 xl:col-span-2">
                         <article class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
                             <h3 class="mb-3 text-2xl font-bold text-slate-800">Action Required</h3>

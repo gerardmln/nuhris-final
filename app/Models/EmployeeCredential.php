@@ -14,6 +14,7 @@ class EmployeeCredential extends Model
     protected $fillable = [
         'employee_id',
         'credential_type',
+        'degree_level',
         'title',
         'department_id',
         'expires_at',
@@ -58,6 +59,16 @@ class EmployeeCredential extends Model
             'degrees' => 'Academic Degree',
             'ranking' => 'Ranking File',
             default => ucfirst((string) $this->credential_type),
+        };
+    }
+
+    public function degreeLevelLabel(): string
+    {
+        return match ($this->degree_level) {
+            'undergraduate' => 'Undergraduate Degree',
+            'masters' => "Master's Degree",
+            'doctoral' => 'Doctoral Degree',
+            default => 'Academic Degree',
         };
     }
 

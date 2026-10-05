@@ -18,6 +18,7 @@ class Announcement extends Model
         'content',
         'priority',
         'target_employee_type',
+        'target_user_id',
         'target_office',
         'target_department_id',
         'target_ranking',
@@ -34,6 +35,7 @@ class Announcement extends Model
             'expires_at' => 'datetime',
             'is_published' => 'boolean',
             'target_department_id' => 'integer',
+            'target_user_id' => 'integer',
         ];
     }
 
@@ -62,9 +64,18 @@ class Announcement extends Model
         return $this->belongsTo(Department::class, 'target_department_id');
     }
 
+    public function targetUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'target_user_id');
+    }
+
     public function getAudienceLabelAttribute(): string
     {
         $segments = [];
+
+        if ($this->targetUser?->employeeProfile) {
+            return $this->targetUser->employeeProfile->full_name;
+        }
 
         if ($this->target_employee_type) {
             $segments[] = $this->target_employee_type === 'faculty' ? 'Faculty' : 'Admin Support Personnel';

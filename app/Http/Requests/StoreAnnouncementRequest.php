@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Department;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -48,11 +49,58 @@ class StoreAnnouncementRequest extends FormRequest
             'content' => ['required', 'string'],
             'priority' => ['required', 'in:low,medium,high'],
             'target_employee_type' => ['nullable', Rule::in($employeeTypes)],
+            'target_scope' => ['required', Rule::in(['all', 'group', 'person'])],
+            'target_employee' => ['nullable', 'string', 'max:255'],
+            'target_user_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('user_type', User::TYPE_EMPLOYEE)],
             'target_office' => ['nullable', Rule::in($allowedPositions)],
             'target_department_id' => ['nullable', Rule::in($facultyDepartmentIds)],
             'target_ranking' => ['nullable', Rule::in($allowedRankings)],
             'expires_at' => ['required', 'date'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            $scope = $this->input('target_scope');
+            $search = trim((string) $this->input('target_employee'));
+
+            if ($scope === 'person' && $search === '') {
+                $validator->errors()->add('target_employee', 'Select an employee by name or ID number.');
+
+                return;
+            }
+
+            if ($scope !== 'person' && $search !== '') {
+                $validator->errors()->add('target_employee', 'Remove the individual employee before using this audience mode.');
+
+                return;
+            }
+
+            if ($search === '') {
+                return;
+            }
+
+            $matches = User::query()
+                ->where('user_type', User::TYPE_EMPLOYEE)
+                ->whereHas('employeeProfile', function ($query) use ($search): void {
+                    $query->where('employee_id', $search)
+                        ->orWhereRaw("LOWER(CONCAT(first_name, ' ', last_name)) = ?", [mb_strtolower($search)]);
+                })
+                ->get();
+
+            if ($matches->count() !== 1) {
+                $validator->errors()->add('target_employee', $matches->isEmpty()
+                    ? 'Select an employee by name or ID number.'
+                    : 'More than one employee matches that name. Use their ID number.');
+                return;
+            }
+
+            $this->merge([
+                'target_scope' => 'person',
+                'target_user_id' => $matches->first()->id,
+            ]);
+        });
     }
 
     private function rankingPrefixForPosition(string $position): string

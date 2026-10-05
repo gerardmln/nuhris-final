@@ -1,7 +1,7 @@
 @extends('employee.layout')
 
-@section('title', 'Account')
-@section('page_title', 'Account')
+@section('title', 'Profile')
+@section('page_title', 'Profile')
 
 @section('content')
     @if (session('success'))
@@ -9,6 +9,9 @@
     @endif
     @if (session('password_success'))
         <div class="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('password_success') }}</div>
+    @endif
+    @if (session('error'))
+        <div class="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{{ session('error') }}</div>
     @endif
 
     <article class="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
@@ -51,7 +54,7 @@
                 </div>
             </div>
 
-            <form class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:col-span-2 js-loading-form" method="POST" action="{{ route('employee.account.update') }}">
+            <form class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:col-span-2 js-loading-form" method="POST" action="{{ route('employee.profile.update') }}">
             @csrf
             <div>
                 <label class="mb-2 block text-sm font-semibold text-slate-700">Phone</label>
@@ -71,10 +74,60 @@
         </div>
     </article>
 
+    <article class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm">
+        <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+                <h2 class="text-3xl font-bold text-slate-900">Academic Degrees</h2>
+                <p class="mt-1 text-sm text-slate-500">Submit one PDF per degree level. Each file must be no larger than 5 MB.</p>
+            </div>
+        </div>
+
+        @if ($errors->any())
+            <div class="mt-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $errors->first() }}</div>
+        @endif
+
+        <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            @foreach (['undergraduate' => 'Undergraduate Degree', 'masters' => "Master's Degree", 'doctoral' => 'Doctoral Degree'] as $level => $label)
+                @php($degree = $degrees->firstWhere('degree_level', $level))
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <h3 class="font-bold text-slate-900">{{ $label }}</h3>
+                        @if ($degree)
+                            <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $degree->status === 'verified' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">{{ ucfirst($degree->status) }}</span>
+                        @endif
+                    </div>
+
+                    @if ($degree)
+                        <p class="mt-3 truncate text-sm text-slate-600" title="{{ $degree->original_filename }}">{{ $degree->original_filename }}</p>
+                        <p class="mt-1 text-xs text-slate-500">Submitted {{ $degree->created_at?->format('M d, Y') }}</p>
+                        @if ($degree->review_notes)
+                            <p class="mt-2 text-xs text-slate-600">HR note: {{ $degree->review_notes }}</p>
+                        @endif
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <a href="{{ route('employee.profile.degrees.view', $degree) }}" class="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50">View PDF</a>
+                            <form method="POST" action="{{ route('employee.profile.degrees.destroy', $degree) }}" onsubmit="return confirm('Delete this degree submission so you can upload a new file?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50">Delete</button>
+                            </form>
+                        </div>
+                    @else
+                        <form class="mt-4 space-y-3" method="POST" action="{{ route('employee.profile.degrees.store') }}" enctype="multipart/form-data">
+                            @csrf
+                            <input type="hidden" name="degree_level" value="{{ $level }}">
+                            <input type="file" name="degree_file" accept="application/pdf,.pdf" required class="block w-full rounded-lg border border-slate-300 bg-white p-2 text-xs text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-blue-700">
+                            <button type="submit" class="w-full rounded-lg bg-[#003a78] px-3 py-2 text-sm font-semibold text-white hover:bg-[#002f61]">Upload PDF</button>
+                        </form>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    </article>
+
     {{-- Change Password Section --}}
     <article class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm">
         <h2 class="text-3xl font-bold text-slate-900">Change Password</h2>
-        <p class="mt-1 text-sm text-slate-500">Update your account password. Use your current temporary password or existing password.</p>
+        <p class="mt-1 text-sm text-slate-500">Update your profile password. Use your current temporary password or existing password.</p>
 
         @if ($errors->has('current_password'))
             <div class="mt-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $errors->first('current_password') }}</div>
@@ -83,7 +136,7 @@
             <div class="mt-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $errors->first('new_password') }}</div>
         @endif
 
-        <form class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3 js-loading-form" method="POST" action="{{ route('employee.account.change-password') }}">
+        <form class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3 js-loading-form" method="POST" action="{{ route('employee.profile.change-password') }}">
             @csrf
             <div>
                 <label class="mb-2 block text-sm font-semibold text-slate-700">Current Password *</label>

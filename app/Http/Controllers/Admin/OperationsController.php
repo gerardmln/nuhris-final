@@ -1215,8 +1215,8 @@ class OperationsController extends Controller
                 'submitted_at' => $submission->submitted_at?->format('M d, Y h:i A') ?? '—',
                 'reviewed_at' => $submission->reviewed_at?->format('M d, Y h:i A') ?? '—',
                 'review_notes' => $submission->review_notes,
-                'has_file' => filled($submission->file_path),
-                'original_filename' => $submission->original_filename,
+                'has_link' => filled($submission->monitoring_link),
+                'monitoring_link' => $submission->monitoring_link,
             ];
         });
 

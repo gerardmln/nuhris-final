@@ -1,11 +1,11 @@
 @extends('employee.layout')
 
-@section('title', 'WFH Monitoring')
-@section('page_title', 'WFH Monitoring')
+@section('title', 'WFH Submission')
+@section('page_title', 'WFH Submission')
 
 @section('content')
     <div class="flex flex-wrap items-center justify-between gap-4">
-        <p class="max-w-3xl text-sm text-slate-600">Upload your Work Output Monitoring Sheet for a WFH day. Once HR approves it, the approved date is written to your attendance record.</p>
+        <p class="max-w-3xl text-sm text-slate-600">Please submit your Work Output Monitoring Sheet link only when instructed by HR.</p>
         <a href="{{ route('employee.wfh-monitoring.upload') }}"
            class="rounded-xl bg-[#003a78] px-5 py-2 text-sm font-semibold text-white hover:bg-[#002f61]"
            data-testid="employee-wfh-upload-new">+ Upload New</a>
@@ -41,7 +41,7 @@
     <article class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h2 class="text-2xl font-bold text-slate-900">WFH Monitoring Submissions</h2>
+                <h2 class="text-2xl font-bold text-slate-900">WFH Submissions</h2>
                 <p class="mt-1 text-sm text-slate-500">Approved entries will create or update your attendance record for the selected WFH date.</p>
             </div>
         </div>
@@ -61,7 +61,7 @@
                             <th class="px-4 py-3">Time Out</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3">Reviewed</th>
-                            <th class="px-4 py-3">File</th>
+                            <th class="px-4 py-3">Monitoring Link</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
@@ -80,10 +80,10 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-4">
-                                    @if ($submission['has_file'])
-                                        <a href="{{ route('employee.wfh-monitoring.view', $submission['id']) }}"
+                                    @if ($submission['has_link'])
+                                        <a href="{{ $submission['monitoring_link'] }}" target="_blank" rel="noopener noreferrer"
                                            class="inline-flex items-center rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                           data-testid="employee-wfh-view-file-{{ $submission['id'] }}">View file</a>
+                                           data-testid="employee-wfh-view-link-{{ $submission['id'] }}">View link</a>
                                     @else
                                         <span class="text-slate-400">—</span>
                                     @endif

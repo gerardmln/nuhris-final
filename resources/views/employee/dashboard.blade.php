@@ -9,56 +9,38 @@
         <p class="text-sm text-slate-500">Here is an overview of your HR information.</p>
     </div>
 
-    @if ($stats['expiring_soon'] > 0)
-        <div class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-900 shadow-sm">
-            <p class="text-sm font-semibold">You have {{ $stats['expiring_soon'] }} approved credential{{ $stats['expiring_soon'] > 1 ? 's' : '' }} expiring soon.</p>
-            <p class="mt-1 text-xs text-amber-800">Please visit your credentials list to review and re-upload the affected document(s) if needed.</p>
-        </div>
-    @endif
-
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
         <article class="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">Active Credentials</p>
-            <p class="mt-1 text-4xl font-extrabold">{{ $stats['active_credentials'] }}</p>
-            <p class="text-xs text-slate-500">{{ $stats['pending_credentials'] }} pending review</p>
+            <p class="text-xs font-medium text-slate-500">Present Days (1st–15th)</p>
+            <p class="mt-1 text-4xl font-extrabold">{{ $presentDays['first_cutoff'] }}</p>
+            <p class="text-xs text-slate-500">Current month first cutoff</p>
         </article>
         <article class="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">Compliance</p>
-            <p class="mt-1 text-4xl font-extrabold">{{ $stats['compliance_passed'] }}/{{ $stats['compliance_total'] }}</p>
-            <p class="text-xs text-slate-500">Up to date</p>
-        </article>
-        <article class="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">Leave Balance</p>
-            <p class="mt-1 text-4xl font-extrabold">{{ $stats['leave_balance'] }}</p>
-            <p class="text-xs text-slate-500">Total days remaining</p>
+            <p class="text-xs font-medium text-slate-500">Present Days (16th–End)</p>
+            <p class="mt-1 text-4xl font-extrabold">{{ $presentDays['second_cutoff'] }}</p>
+            <p class="text-xs text-slate-500">Current month second cutoff</p>
         </article>
         <article class="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
             <p class="text-xs font-medium text-slate-500">Notifications</p>
             <p class="mt-1 text-4xl font-extrabold">{{ $stats['notifications'] }}</p>
             <p class="text-xs text-slate-500">Recent alerts</p>
         </article>
+        <a href="{{ route('employee.profile') }}" class="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm transition hover:bg-blue-100">
+            <p class="text-xs font-medium text-blue-700">Quick Access</p>
+            <p class="mt-1 text-xl font-bold text-blue-900">View Your Profile</p>
+            <p class="mt-1 text-xs text-blue-700">Open your employee details and degree submissions.</p>
+        </a>
+        <a href="{{ route('employee.attendance') }}" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm transition hover:bg-emerald-100">
+            <p class="text-xs font-medium text-emerald-700">Quick Access</p>
+            <p class="mt-1 text-xl font-bold text-emerald-900">Approved Schedule</p>
+            <p class="mt-1 text-xs text-emerald-700">
+                {{ $latestApprovedSchedule ? 'Latest: '.($latestApprovedSchedule->term_label ?? $latestApprovedSchedule->semester_label) : 'No approved schedule yet. View schedule status.' }}
+            </p>
+        </a>
     </div>
 
-    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div class="space-y-6 xl:col-span-2">
-            <article class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm">
-                <h3 class="text-2xl font-bold text-slate-800">Compliance Status</h3>
-                <div class="mt-4 space-y-3">
-                    <div class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3">
-                        <p class="text-sm font-semibold text-slate-700">Compliant</p>
-                        <p class="text-3xl font-extrabold text-emerald-500">{{ $stats['compliant'] }}</p>
-                    </div>
-                    <div class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3">
-                        <p class="text-sm font-semibold text-slate-700">Expiring Soon</p>
-                        <p class="text-3xl font-extrabold text-amber-500">{{ $stats['expiring_soon'] }}</p>
-                    </div>
-                    <div class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3">
-                        <p class="text-sm font-semibold text-slate-700">Non-Compliant</p>
-                        <p class="text-3xl font-extrabold text-red-500">{{ $stats['non_compliant'] }}</p>
-                    </div>
-                </div>
-            </article>
-
+    <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
+        <div class="xl:col-span-2">
             <article class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm">
                 <div class="mb-4 flex items-center justify-between">
                     <h3 class="text-2xl font-bold text-slate-800">Recent Alerts</h3>
@@ -93,43 +75,36 @@
             </article>
         </div>
 
+        @php
+            $upcomingAcademicCalendarEntries = collect($academicCalendarEntries)
+                ->filter(fn ($entry) => ($entry['event_date'] ?? '') >= today()->toDateString())
+                ->sortBy('event_date')
+                ->take(3);
+        @endphp
+
         <article class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm">
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <h3 class="text-2xl font-bold text-slate-800">System Calendar</h3>
-                    <p class="mt-3 text-sm font-semibold text-slate-700">{{ $calendar['month_label'] }}</p>
+                    <h3 class="text-2xl font-bold text-slate-800">Calendar</h3>
+                    <p class="text-sm text-slate-500">Browse the academic calendar by month.</p>
                 </div>
                 <button id="open-academic-calendar" type="button" class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100">
                     Open Calendar
                 </button>
             </div>
-            <div class="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-            </div>
-            <div class="mt-2 grid grid-cols-7 gap-2 text-sm">
-                @foreach ($calendar['cells'] as $cell)
-                    @if (! $cell)
-                        <div class="min-h-24 rounded-2xl border border-transparent bg-transparent"></div>
-                    @else
-                        <div class="min-h-24 rounded-2xl border border-slate-200 bg-slate-50 p-2 {{ $cell['is_today'] ? 'ring-2 ring-blue-500' : '' }}">
-                            <div class="flex items-center justify-between">
-                                @php $hasEntries = $cell['entries']->count() > 0; @endphp
-                                <span class="text-xs font-semibold {{ $hasEntries ? 'inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-50 text-sky-700' : 'text-slate-500' }}">{{ $cell['day'] }}</span>
-                                @if ($hasEntries)
-                                    <span class="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white">{{ $cell['entries']->count() }}</span>
-                                @endif
-                            </div>
+
+            <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Upcoming academic dates</p>
+                <div class="mt-3 space-y-2">
+                    @forelse ($upcomingAcademicCalendarEntries as $entry)
+                        <div class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2">
+                            <p class="text-sm font-semibold text-slate-800">{{ $entry['title'] }}</p>
+                            <p class="text-xs text-slate-500">{{ \Illuminate\Support\Carbon::parse($entry['event_date'])->format('M d, Y') }} · {{ $entry['type_label'] }}</p>
                         </div>
-                    @endif
-                @endforeach
-            </div>
-            <div class="mt-6 space-y-2 text-sm">
-                <p class="font-semibold">UPCOMING EVENTS</p>
-                @forelse ($calendar['events'] as $event)
-                    <p class="text-slate-600">{{ $event }}</p>
-                @empty
-                    <p class="text-slate-600">No upcoming events.</p>
-                @endforelse
+                    @empty
+                        <p class="text-sm text-slate-500">No upcoming academic calendar entries yet.</p>
+                    @endforelse
+                </div>
             </div>
         </article>
     </div>

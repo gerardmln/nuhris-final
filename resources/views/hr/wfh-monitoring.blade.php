@@ -8,7 +8,7 @@
 
 @section('content')
     <div class="flex flex-wrap items-center justify-between gap-4">
-        <p class="max-w-3xl text-sm text-slate-600">Review submitted Work Output Monitoring Sheets. Approving a sheet will create or update the employee's attendance record for the submitted WFH date.</p>
+        <p class="max-w-3xl text-sm text-slate-600">Review submitted Work Output Monitoring Sheet links. Approving a submission will create or update the employee's attendance record for the submitted WFH date.</p>
     </div>
 
     <div class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
@@ -78,7 +78,7 @@
                             <th class="px-4 py-3">Time Out</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3">Submitted</th>
-                            <th class="px-4 py-3">File</th>
+                            <th class="px-4 py-3">Monitoring Link</th>
                             <th class="px-4 py-3">Actions</th>
                         </tr>
                     </thead>
@@ -100,8 +100,8 @@
                                 </td>
                                 <td class="px-4 py-4 text-slate-600">{{ $submission['submitted_at'] }}</td>
                                 <td class="px-4 py-4">
-                                    @if ($submission['has_file'])
-                                        <a href="{{ route('wfh-monitoring.view', $submission['id']) }}" class="inline-flex items-center rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">View file</a>
+                                    @if ($submission['has_link'])
+                                        <a href="{{ $submission['monitoring_link'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">View link</a>
                                     @else
                                         <span class="text-slate-400">—</span>
                                     @endif

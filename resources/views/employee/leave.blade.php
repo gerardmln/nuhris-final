@@ -5,6 +5,9 @@
 
 @section('content')
     <p class="text-sm text-slate-600">View your leave balances and history. Leave data is managed by HR (read-only).</p>
+    <p class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <span class="font-semibold">Disclaimer:</span> Leave counts shown here may not be accurate. Please view your NUIS account for the most accurate leave balance.
+    </p>
 
     {{-- Leave Usage Summary --}}
     @if (isset($leaveUsage))

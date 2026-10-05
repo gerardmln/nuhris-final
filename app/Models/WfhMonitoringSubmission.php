@@ -21,6 +21,7 @@ class WfhMonitoringSubmission extends Model
         'wfh_date',
         'time_in',
         'time_out',
+        'monitoring_link',
         'file_path',
         'original_filename',
         'status',

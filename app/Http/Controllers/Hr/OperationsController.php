@@ -37,25 +37,18 @@ class OperationsController extends Controller
         $employeeId = $request->integer('employee');
 
         $employee = Employee::query()
-            ->with('department')
+            ->with(['department', 'credentials' => fn ($query) => $query
+                ->where('credential_type', 'degrees')
+                ->orderByRaw("CASE degree_level WHEN 'undergraduate' THEN 1 WHEN 'masters' THEN 2 WHEN 'doctoral' THEN 3 ELSE 4 END")])
             ->when($employeeId, fn ($query) => $query->whereKey($employeeId))
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->first();
 
-        $absencesCount = 0;
-        if ($employee) {
-            $absencesCount = AttendanceRecord::query()
-                ->where('employee_id', $employee->id)
-                ->whereBetween('record_date', [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()])
-                ->where('status', 'absent')
-                ->count();
-        }
-
         return view('hr.viewemployeeprofile', [
             'employee' => $employee,
             'schedule_summary' => $scheduleService->summarizeSubmission($employee ? $scheduleService->currentSubmission($employee) : null),
-            'absences_count' => $absencesCount,
+            'degrees' => $employee?->credentials ?? collect(),
         ]);
     }
 
@@ -198,6 +191,8 @@ class OperationsController extends Controller
 
     public function approveCredential(Request $request, EmployeeCredential $credential): RedirectResponse
     {
+        abort_unless($credential->credential_type === 'degrees', 404);
+
         $validated = $request->validate([
             'review_notes' => ['nullable', 'string', 'max:1000'],
         ]);
@@ -218,11 +213,13 @@ class OperationsController extends Controller
             );
         });
 
-        return back()->with('success', 'Credential approved successfully.');
+        return back()->with('success', 'Degree approved successfully.');
     }
 
-    public function rejectCredential(Request $request, EmployeeCredential $credential): RedirectResponse
+    public function rejectCredential(Request $request, EmployeeCredential $credential, SupabaseStorageService $storage): RedirectResponse
     {
+        abort_unless($credential->credential_type === 'degrees', 404);
+
         $validated = $request->validate([
             'review_notes' => ['required', 'string', 'max:1000'],
         ], [
@@ -230,6 +227,7 @@ class OperationsController extends Controller
         ]);
 
         DB::transaction(function () use ($request, $credential, $validated): void {
+            $isDegree = $credential->credential_type === 'degrees';
             $credential->update([
                 'status' => 'rejected',
                 'reviewed_by' => $request->user()?->id,
@@ -243,9 +241,20 @@ class OperationsController extends Controller
                 $request->user(),
                 $validated['review_notes']
             );
+
+            if ($isDegree) {
+                $credential->delete();
+            }
         });
 
-        return back()->with('success', 'Credential rejected. The employee will see your notes.');
+        if ($credential->file_path && $credential->credential_type === 'degrees' && $storage->isEnabled() && ! $storage->delete($credential->file_path)) {
+            \Illuminate\Support\Facades\Log::warning('Unable to delete declined degree file from storage', [
+                'credential_id' => $credential->id,
+                'file_path' => $credential->file_path,
+            ]);
+        }
+
+        return back()->with('success', 'Degree declined. The employee will see your notes.');
     }
 
     private function broadcastCredentialDecisionNotification(EmployeeCredential $credential, string $decision, ?User $reviewer, ?string $notes = null): void
@@ -253,15 +262,14 @@ class OperationsController extends Controller
         $credential->loadMissing('employee');
 
         $title = $decision === 'approved'
-            ? 'Credential approved'
-            : 'Credential rejected';
+            ? 'Degree approved'
+            : 'Degree declined';
 
         $content = sprintf(
-            '%s %s the %s credential "%s" for %s.',
+            '%s %s the %s degree submission for %s.',
             $reviewer?->name ?? 'HR',
             $decision,
-            $credential->typeLabel(),
-            $credential->title,
+            $credential->degreeLevelLabel(),
             $credential->employee?->full_name ?? 'an employee'
         );
 
@@ -293,7 +301,7 @@ class OperationsController extends Controller
             'user_id' => $userId,
             'is_read' => false,
             'read_at' => null,
-            'redirect_url' => route('employee.credentials'),
+            'redirect_url' => route('employee.profile'),
             'created_at' => now(),
             'updated_at' => now(),
         ])->all();

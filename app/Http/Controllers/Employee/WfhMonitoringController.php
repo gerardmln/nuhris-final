@@ -49,8 +49,8 @@ class WfhMonitoringController extends Controller
                 'submitted_at' => $submission->submitted_at?->format('M d, Y h:i A') ?? '—',
                 'reviewed_at' => $submission->reviewed_at?->format('M d, Y h:i A') ?? '—',
                 'review_notes' => $submission->review_notes,
-                'has_file' => filled($submission->file_path),
-                'original_filename' => $submission->original_filename,
+                'has_link' => filled($submission->monitoring_link),
+                'monitoring_link' => $submission->monitoring_link,
             ];
         });
 
@@ -74,13 +74,13 @@ class WfhMonitoringController extends Controller
         ]);
     }
 
-    public function store(Request $request, SupabaseStorageService $storage): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validator = Validator::make($request->all(), [
             'wfh_date' => ['required', 'date'],
             'time_in' => ['required', 'date_format:H:i'],
             'time_out' => ['required', 'date_format:H:i', 'after:time_in'],
-            'monitoring_file' => ['required', 'file', 'max:20480'],
+            'monitoring_link' => ['required', 'url:http,https', 'max:2048'],
         ], [
             'wfh_date.required' => 'Please choose the WFH date first.',
             'wfh_date.date' => 'The WFH date is invalid.',
@@ -89,8 +89,9 @@ class WfhMonitoringController extends Controller
             'time_out.required' => 'Please enter the expected time out.',
             'time_out.date_format' => 'The time out must be a valid time.',
             'time_out.after' => 'The time out must be later than the time in.',
-            'monitoring_file.required' => 'Please choose a file first.',
-            'monitoring_file.max' => 'The file is too large. Maximum allowed is 20 MB.',
+            'monitoring_link.required' => 'Please enter the monitoring sheet link.',
+            'monitoring_link.url' => 'The monitoring sheet link must be a valid HTTP or HTTPS URL.',
+            'monitoring_link.max' => 'The monitoring sheet link may not be longer than 2048 characters.',
         ]);
 
         EmployeeWorkTimeConstraints::applyToValidator($validator);
@@ -113,37 +114,21 @@ class WfhMonitoringController extends Controller
             return back()->withInput()->with('error', 'You already have a pending or approved WFH submission for that date.');
         }
 
-        $filePath = null;
-        $originalFilename = null;
-
-        if (! $storage->isEnabled()) {
-            return back()->withInput()->with('error', 'File storage is not configured. Please contact the administrator.');
-        }
-
-        try {
-            $file = $request->file('monitoring_file');
-            $filePath = $storage->uploadFile($file, 'employee-'.$employee->id.'/wfh-monitoring');
-            $originalFilename = $file->getClientOriginalName();
-        } catch (\Throwable $exception) {
-            return back()->withInput()->with('error', 'File upload failed: '.$exception->getMessage());
-        }
-
-        DB::transaction(function () use ($employee, $request, $validated, $filePath, $originalFilename): void {
+        DB::transaction(function () use ($employee, $request, $validated): void {
             WfhMonitoringSubmission::create([
                 'employee_id' => $employee->id,
                 'submitted_by' => $request->user()->id,
                 'wfh_date' => $validated['wfh_date'],
                 'time_in' => $validated['time_in'],
                 'time_out' => $validated['time_out'],
-                'file_path' => $filePath,
-                'original_filename' => $originalFilename,
+                'monitoring_link' => $validated['monitoring_link'],
                 'status' => WfhMonitoringSubmission::STATUS_PENDING,
                 'submitted_at' => now(),
             ]);
 
             $announcement = Announcement::forceCreate([
-                'title' => 'New WFH monitoring sheet uploaded',
-                'content' => sprintf('%s uploaded a WFH monitoring sheet for %s and is waiting for HR review.', $employee->full_name, Carbon::parse($validated['wfh_date'])->format('F d, Y')),
+                'title' => 'New WFH monitoring link submitted',
+                'content' => sprintf('%s submitted a WFH monitoring link for %s and is waiting for HR review.', $employee->full_name, Carbon::parse($validated['wfh_date'])->format('F d, Y')),
                 'priority' => 'medium',
                 'target_user_type' => User::TYPE_HR,
                 'published_at' => now(),
@@ -170,7 +155,7 @@ class WfhMonitoringController extends Controller
             }
         });
 
-        return redirect()->route('employee.wfh-monitoring.index')->with('success', 'Your WFH monitoring sheet was uploaded and is now pending HR review.');
+        return redirect()->route('employee.wfh-monitoring.index')->with('success', 'Your WFH monitoring link was submitted and is now pending HR review.');
     }
 
     public function viewFile(Request $request, WfhMonitoringSubmission $submission, SupabaseStorageService $storage): View|RedirectResponse

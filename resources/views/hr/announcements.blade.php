@@ -155,6 +155,24 @@
                         <textarea name="content" rows="4" placeholder="Write your announcement here..." class="w-full rounded-md border border-slate-300 px-3 py-2.5 text-lg focus:border-blue-400 focus:outline-none" required></textarea>
                     </div>
 
+                    <div>
+                        <label class="mb-1 block text-lg font-semibold text-[#1f2b8b]">Announcement audience</label>
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label="Announcement audience">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="target_scope" value="all" class="peer sr-only" checked>
+                                <span data-target-toggle="all" class="block rounded-md border border-slate-300 bg-white px-3 py-2.5 text-center font-semibold text-slate-700 transition">Everyone</span>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="target_scope" value="group" class="peer sr-only">
+                                <span data-target-toggle="group" class="block rounded-md border border-slate-300 bg-white px-3 py-2.5 text-center font-semibold text-slate-700 transition">Role-based</span>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="target_scope" value="person" class="peer sr-only">
+                                <span data-target-toggle="person" class="block rounded-md border border-slate-300 bg-white px-3 py-2.5 text-center font-semibold text-slate-700 transition">Individual</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-lg font-semibold text-[#1f2b8b]">Priority</label>
@@ -166,7 +184,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div data-target-mode="group" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-lg font-semibold text-[#1f2b8b]">Target Employee</label>
                             <select name="target_employee_type" data-target-control="employee_type" class="w-full rounded-md border border-slate-300 px-3 py-2.5 text-lg focus:border-blue-400 focus:outline-none">
@@ -187,7 +205,19 @@
                         </div>
                     </div>
 
-                    <div data-target-field="filters" class="hidden space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div data-target-mode="person" class="hidden">
+                        <label class="mb-1 block text-lg font-semibold text-[#1f2b8b]">Individual employee</label>
+                        <input name="target_employee" list="announcement-employees" type="text" placeholder="Type employee name or ID number" class="w-full rounded-md border border-slate-300 px-3 py-2.5 text-lg focus:border-blue-400 focus:outline-none" disabled>
+                        <datalist id="announcement-employees">
+                            @foreach ($employees as $employee)
+                                <option value="{{ $employee->employee_id }}">{{ $employee->full_name }}</option>
+                                <option value="{{ $employee->full_name }}">{{ $employee->employee_id }}</option>
+                            @endforeach
+                        </datalist>
+                        <p class="mt-1 text-xs text-slate-500">Search by employee name or ID number.</p>
+                    </div>
+
+                    <div data-target-mode="group" data-target-field="filters" class="hidden space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                         <div>
                             <label class="mb-1 block text-lg font-semibold text-[#1f2b8b]">Target Position / Office</label>
                             <select name="target_office" data-target-control="position" class="w-full rounded-md border border-slate-300 px-3 py-2.5 text-lg focus:border-blue-400 focus:outline-none">
@@ -318,6 +348,10 @@
         const targetDepartmentField = document.querySelector('[data-target-field="department"]');
         const targetFiltersField = document.querySelector('[data-target-field="filters"]');
         const targetRankingField = document.querySelector('[data-target-field="ranking"]');
+        const targetModeControls = document.querySelectorAll('[name="target_scope"]');
+        const targetModeSections = document.querySelectorAll('[data-target-mode]');
+        const targetModeToggles = document.querySelectorAll('[data-target-toggle]');
+        const targetEmployeeInput = document.querySelector('[name="target_employee"]');
 
         function normalizeTargetValue(value) {
             return String(value ?? '').trim().toLowerCase();
@@ -394,12 +428,36 @@
         }
 
         function updateAnnouncementTargetFields() {
+            const targetScope = document.querySelector('[name="target_scope"]:checked')?.value ?? 'all';
             const employeeType = targetEmployeeTypeControl?.value ?? '';
             const isFaculty = employeeType === 'faculty';
             const isAdminSupport = employeeType === 'admin_support';
 
+            targetModeToggles.forEach((toggle) => {
+                const isSelected = toggle.dataset.targetToggle === targetScope;
+                toggle.classList.toggle('border-[#00386f]', isSelected);
+                toggle.classList.toggle('bg-[#00386f]', isSelected);
+                toggle.classList.toggle('text-white', isSelected);
+                toggle.classList.toggle('border-slate-300', !isSelected);
+                toggle.classList.toggle('bg-white', !isSelected);
+                toggle.classList.toggle('text-slate-700', !isSelected);
+            });
+
+            targetModeSections.forEach((section) => {
+                const shouldShow = section.dataset.targetMode === targetScope;
+                section.classList.toggle('hidden', !shouldShow);
+            });
+
+            if (targetEmployeeInput) {
+                const isPersonTarget = targetScope === 'person';
+                targetEmployeeInput.disabled = !isPersonTarget;
+                if (!isPersonTarget) {
+                    targetEmployeeInput.value = '';
+                }
+            }
+
             if (targetFiltersField) {
-                targetFiltersField.classList.toggle('hidden', !employeeType);
+                targetFiltersField.classList.toggle('hidden', targetScope !== 'group' || !employeeType);
             }
 
             if (targetDepartmentField) {
@@ -433,6 +491,10 @@
         if (targetPositionControl) {
             targetPositionControl.addEventListener('change', updateAnnouncementTargetFields);
         }
+
+        targetModeControls.forEach((control) => {
+            control.addEventListener('change', updateAnnouncementTargetFields);
+        });
 
         updateAnnouncementTargetFields();
 

@@ -18,22 +18,17 @@ class DashboardController extends Controller
     public function index(): View
     {
         $totalEmployees = Employee::count();
-        $pendingCredentials = Employee::where('resume_last_updated_at', '<', now()->subMonths(6))->count();
-        $expiringLicenses = 0;
-
-
-        $expiringCredentialsCount = \App\Models\EmployeeCredential::query()
-            ->where('status', 'verified')
-            ->get()
-            ->filter(fn (\App\Models\EmployeeCredential $credential) => $credential->isExpiringSoon())
-            ->count();
-
         $pendingScheduleApprovalsCount = EmployeeScheduleSubmission::query()
             ->where('status', EmployeeScheduleSubmission::STATUS_PENDING)
             ->count();
 
         $pendingWfhApprovalsCount = WfhMonitoringSubmission::query()
             ->where('status', WfhMonitoringSubmission::STATUS_PENDING)
+            ->count();
+
+        $pendingDegreeApprovalsCount = EmployeeCredential::query()
+            ->where('credential_type', 'degrees')
+            ->where('status', 'pending')
             ->count();
 
         $unreadNotificationsCount = Auth::check()
@@ -44,15 +39,18 @@ class DashboardController extends Controller
                 ->count()
             : 0;
 
+        $today = now()->startOfDay();
+        $nextCutoffDate = $today->day <= 15
+            ? $today->copy()->day(15)
+            : $today->copy()->endOfMonth();
+        $daysUntilCutoff = max($today->diffInDays($nextCutoffDate, false), 0);
+
+        $announcementsCreatedThisMonth = Announcement::query()
+            ->where('created_by', Auth::id())
+            ->whereBetween('created_at', [$today->copy()->startOfMonth(), $today->copy()->endOfMonth()])
+            ->count();
+
         $actionRequiredCards = [
-            [
-                'title' => 'Expiring Credentials',
-                'count' => $expiringCredentialsCount,
-                'description' => 'Verified files that are nearing expiration.',
-                'href' => route('credentials.index', ['status' => 'expiring']),
-                'tone' => 'amber',
-                'empty_label' => 'No expiring credentials',
-            ],
             [
                 'title' => 'Schedule Approvals',
                 'count' => $pendingScheduleApprovalsCount,
@@ -76,6 +74,30 @@ class DashboardController extends Controller
                 'href' => route('notifications.index'),
                 'tone' => 'slate',
                 'empty_label' => 'No unread notifications',
+            ],
+            [
+                'title' => 'Submitted Degrees',
+                'count' => $pendingDegreeApprovalsCount,
+                'description' => 'Degree submissions waiting for HR approval.',
+                'href' => route('employees.profile'),
+                'tone' => 'amber',
+                'empty_label' => 'No pending degree submissions',
+            ],
+            [
+                'title' => 'Days to DTR Cutoff',
+                'count' => $daysUntilCutoff,
+                'description' => sprintf('Reminder: submit DTR before %s.', $nextCutoffDate->format('M d')),
+                'href' => route('timekeeping.dtr'),
+                'tone' => 'slate',
+                'empty_label' => sprintf('Reminder: submit DTR before %s.', $nextCutoffDate->format('M d')),
+            ],
+            [
+                'title' => 'Create Announcements',
+                'count' => $announcementsCreatedThisMonth,
+                'description' => 'Open the announcements module to publish updates.',
+                'href' => route('announcements.index'),
+                'tone' => 'blue',
+                'empty_label' => 'No announcements created this month',
             ],
         ];
         $academicCalendarEntries = AcademicCalendarEntry::query()
@@ -111,8 +133,6 @@ class DashboardController extends Controller
         // Dashboard stats
         $stats = [
             'total_employees' => $totalEmployees,
-            'pending_credentials' => $pendingCredentials,
-            'expiring_licenses' => $expiringLicenses,
         ];
 
         return view('hr.dashboard', [

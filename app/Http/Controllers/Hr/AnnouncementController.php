@@ -7,6 +7,7 @@ use App\Http\Requests\StoreAnnouncementRequest;
 use App\Models\Department;
 use App\Models\Announcement;
 use App\Models\AnnouncementNotification;
+use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -45,6 +46,11 @@ class AnnouncementController extends Controller
         return view('hr.announcements', [
             'announcements' => $announcements,
             'facultyDepartments' => Department::query()->facultySchools()->orderBy('name')->get(),
+            'employees' => Employee::query()
+                ->whereNotIn('status', ['resigned', 'terminated'])
+                ->orderBy('last_name')
+                ->orderBy('first_name')
+                ->get(['employee_id', 'first_name', 'last_name']),
             'facultyPositions' => $facultyPositions,
             'adminSupportOffices' => $adminSupportOffices,
             'facultyRankings' => $facultyRankings,
@@ -66,8 +72,25 @@ class AnnouncementController extends Controller
     public function store(StoreAnnouncementRequest $request): RedirectResponse
     {
         DB::transaction(function () use ($request): void {
+            $data = $request->validated();
+            unset($data['target_scope'], $data['target_employee']);
+            unset($data['target_user_id']);
+
+            if ($request->input('target_scope') === 'person') {
+                $data['target_user_id'] = $request->input('target_user_id');
+                $data['target_employee_type'] = null;
+                $data['target_office'] = null;
+                $data['target_department_id'] = null;
+                $data['target_ranking'] = null;
+            } elseif ($request->input('target_scope') === 'all') {
+                $data['target_employee_type'] = null;
+                $data['target_office'] = null;
+                $data['target_department_id'] = null;
+                $data['target_ranking'] = null;
+            }
+
             $announcement = Announcement::create([
-                ...$request->validated(),
+                ...$data,
                 'is_published' => true,
                 'created_by' => $request->user()->id,
                 'published_at' => now(),
@@ -75,16 +98,20 @@ class AnnouncementController extends Controller
 
             $userQuery = User::query()->where('user_type', User::TYPE_EMPLOYEE);
 
+            if ($announcement->target_user_id) {
+                $userQuery->whereKey($announcement->target_user_id);
+            }
+
             $hasEmployeeFilters = filled($announcement->target_employee_type)
                 || filled($announcement->target_office)
                 || filled($announcement->target_department_id)
                 || filled($announcement->target_ranking);
 
-            if ($hasEmployeeFilters) {
+            if (! $announcement->target_user_id && $hasEmployeeFilters) {
                 $userQuery->whereHas('employeeProfile');
             }
 
-            if ($announcement->target_employee_type) {
+            if (! $announcement->target_user_id && $announcement->target_employee_type) {
                 $employeeType = $announcement->target_employee_type === 'faculty'
                     ? 'Faculty'
                     : 'Admin Support Personnel';
@@ -94,19 +121,19 @@ class AnnouncementController extends Controller
                 });
             }
 
-            if ($announcement->target_office) {
+            if (! $announcement->target_user_id && $announcement->target_office) {
                 $userQuery->whereHas('employeeProfile', function ($query) use ($announcement): void {
                     $query->where('position', $announcement->target_office);
                 });
             }
 
-            if ($announcement->target_department_id && $announcement->target_employee_type === 'faculty') {
+            if (! $announcement->target_user_id && $announcement->target_department_id && $announcement->target_employee_type === 'faculty') {
                 $userQuery->whereHas('employeeProfile', function ($query) use ($announcement): void {
                     $query->where('department_id', $announcement->target_department_id);
                 });
             }
 
-            if ($announcement->target_ranking) {
+            if (! $announcement->target_user_id && $announcement->target_ranking) {
                 $userQuery->whereHas('employeeProfile', function ($query) use ($announcement): void {
                     $query->where('ranking', $announcement->target_ranking);
                 });

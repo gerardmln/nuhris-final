@@ -47,14 +47,9 @@ Route::prefix('hr')->middleware(['auth', 'user.type:2', 'privacy.notice'])->grou
     // Sensitive actions removed for HR: delete and resend credentials are admin-only now.
 
     Route::get('/employees/profile', [OperationsController::class, 'profile'])->name('employees.profile');
-
-    Route::get('/credentials', [OperationsController::class, 'credentials'])->name('credentials.index');
-
-    Route::get('/credentials/{credential}/view', [OperationsController::class, 'viewCredentialFile'])->whereNumber('credential')->name('credentials.view');
-
-    Route::post('/credentials/{credential}/approve', [OperationsController::class, 'approveCredential'])->whereNumber('credential')->name('credentials.approve');
-
-    Route::post('/credentials/{credential}/reject', [OperationsController::class, 'rejectCredential'])->whereNumber('credential')->name('credentials.reject');
+    Route::get('/employees/degrees/{credential}/view', [OperationsController::class, 'viewCredentialFile'])->whereNumber('credential')->name('employees.degrees.view');
+    Route::post('/employees/degrees/{credential}/approve', [OperationsController::class, 'approveCredential'])->whereNumber('credential')->name('employees.degrees.approve');
+    Route::post('/employees/degrees/{credential}/decline', [OperationsController::class, 'rejectCredential'])->whereNumber('credential')->name('employees.degrees.decline');
 
     Route::get('/timekeeping', [OperationsController::class, 'timekeeping'])->name('timekeeping.index');
 
@@ -109,7 +104,7 @@ Route::prefix('hr')->middleware(['auth', 'user.type:2', 'privacy.notice'])->grou
             ->latest()
             ->get();
 
-        return view('hr.notifications', [
+        return view('notifications.index', [
             'notifications' => $notifications,
         ]);
     })->name('notifications.index');
@@ -156,20 +151,6 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
     });
 
     Route::get('/dashboard', [EmployeePortalController::class, 'dashboard'])->name('dashboard');
-
-    Route::get('/credentials', [EmployeePortalController::class, 'credentials'])->name('credentials');
-
-    Route::get('/credentials/upload', [EmployeePortalController::class, 'credentialsUpload'])->name('credentials.upload');
-
-    Route::post('/credentials/upload', [EmployeePortalController::class, 'storeCredential'])->name('credentials.upload.store');
-
-    Route::get('/credentials/{credential}/view', [EmployeePortalController::class, 'viewCredentialFile'])
-        ->whereNumber('credential')
-        ->name('credentials.view');
-
-    Route::delete('/credentials/{credential}', [EmployeePortalController::class, 'destroyCredential'])
-        ->whereNumber('credential')
-        ->name('credentials.destroy');
 
     Route::get('/attendance-dtr', [EmployeePortalController::class, 'attendance'])->name('attendance');
     Route::post('/attendance-dtr/schedule', [EmployeePortalController::class, 'storeSchedule'])->name('attendance.schedule.store');
@@ -228,11 +209,14 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
         return redirect()->to($notification->redirect_url ?: route('employee.notifications'));
     })->name('notifications.open');
 
-    Route::get('/account', [EmployeePortalController::class, 'account'])->name('account');
+    Route::get('/profile', [EmployeePortalController::class, 'profile'])->name('profile');
 
-    Route::post('/account', [EmployeePortalController::class, 'updateAccount'])->name('account.update');
+    Route::post('/profile', [EmployeePortalController::class, 'updateProfile'])->name('profile.update');
+    Route::post('/profile/degrees', [EmployeePortalController::class, 'storeDegree'])->name('profile.degrees.store');
+    Route::get('/profile/degrees/{credential}/view', [EmployeePortalController::class, 'viewCredentialFile'])->whereNumber('credential')->name('profile.degrees.view');
+    Route::delete('/profile/degrees/{credential}', [EmployeePortalController::class, 'destroyDegree'])->whereNumber('credential')->name('profile.degrees.destroy');
 
-    Route::post('/account/change-password', [EmployeePortalController::class, 'changePassword'])->name('account.change-password');
+    Route::post('/profile/change-password', [EmployeePortalController::class, 'changePassword'])->name('profile.change-password');
 });
 
 // Admin (User) Module Routes
@@ -241,16 +225,54 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
         return redirect()->route('admin.dashboard');
     });
 
-    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/notifications', function () {
+        $notifications = AnnouncementNotification::query()
+            ->visible()
+            ->with('announcement')
+            ->where('user_id', Auth::id())
+            ->latest()
+            ->get();
 
-    // ========== CREDENTIAL MANAGEMENT (ADMIN-ONLY) ==========
-    Route::prefix('credentials')->name('credentials.')->group(function () {
-        Route::get('/', [AdminOperationsController::class, 'credentials'])->name('index');
-        Route::get('/{credential}/view', [AdminOperationsController::class, 'viewCredentialFile'])->whereNumber('credential')->name('view');
-        Route::get('/{credential}/edit', [AdminOperationsController::class, 'editCredential'])->whereNumber('credential')->name('edit');
-        Route::put('/{credential}', [AdminOperationsController::class, 'updateCredential'])->whereNumber('credential')->name('update');
-        Route::delete('/{credential}', [AdminOperationsController::class, 'deleteCredential'])->whereNumber('credential')->name('destroy');
-    });
+        return view('notifications.index', [
+            'notifications' => $notifications,
+        ]);
+    })->name('notifications.index');
+
+    Route::delete('/notifications/clear-all', function (Request $request) {
+        $deleted = AnnouncementNotification::query()
+            ->where('user_id', $request->user()?->id)
+            ->delete();
+
+        return redirect()->route('admin.notifications.index')->with('success', $deleted > 0 ? 'All notifications were cleared.' : 'No notifications to clear.');
+    })->name('notifications.clear-all');
+
+    Route::post('/notifications/read-all', function (Request $request) {
+        $updated = AnnouncementNotification::query()
+            ->visible()
+            ->where('user_id', $request->user()?->id)
+            ->where('is_read', false)
+            ->update([
+                'is_read' => true,
+                'read_at' => now(),
+            ]);
+
+        return redirect()->route('admin.notifications.index')->with('success', $updated > 0 ? 'All notifications were marked as read.' : 'No unread notifications to mark as read.');
+    })->name('notifications.read-all');
+
+    Route::get('/notifications/{notification}/open', function (Request $request, AnnouncementNotification $notification) {
+        abort_unless($notification->user_id === $request->user()?->id, 403);
+
+        if (! $notification->is_read) {
+            $notification->forceFill([
+                'is_read' => true,
+                'read_at' => now(),
+            ])->save();
+        }
+
+        return redirect()->to($notification->redirect_url ?: route('admin.notifications.index'));
+    })->name('notifications.open');
+
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     // ========== DTR / TIMEKEEPING EDITING (ADMIN-ONLY) ==========
     Route::prefix('dtr')->name('dtr.')->group(function () {

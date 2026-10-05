@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEmployeeCredentialRequest;
-use App\Http\Requests\UpdateEmployeeAccountRequest;
+use App\Http\Requests\StoreDegreeSubmissionRequest;
+use App\Http\Requests\UpdateEmployeeProfileRequest;
 use App\Models\Announcement;
 use App\Models\AnnouncementNotification;
 use App\Models\AcademicCalendarEntry;
+use App\Models\AttendanceRecord;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\EmployeeCredential;
@@ -52,22 +54,6 @@ class PortalController extends Controller
             ->latest()
             ->limit(3)
             ->get();
-
-        $credentials = $employee
-            ? EmployeeCredential::query()->where('employee_id', $employee->id)->get()
-            : collect();
-
-        $verifiedCredentials = $credentials->where('status', 'verified')->values();
-        $expiringSoonCredentials = $verifiedCredentials->filter(fn (EmployeeCredential $credential) => $credential->isExpiringSoon())->values();
-        $compliantCredentials = $verifiedCredentials->filter(function (EmployeeCredential $credential) use ($expiringSoonCredentials) {
-            return ! $credential->isExpiringSoon() && (! $credential->expires_at || $credential->expires_at >= now()->startOfDay());
-        })->values();
-
-        $activeCredentials = $verifiedCredentials->count();
-        $pendingCredentials = $credentials->where('status', 'pending')->count();
-        $totalCredentials = $credentials->count();
-        $expiringSoonCount = $expiringSoonCredentials->count();
-        $compliantCount = $compliantCredentials->count();
 
         $academicCalendarEntries = AcademicCalendarEntry::query()
             ->orderBy('event_date')
@@ -126,23 +112,46 @@ class PortalController extends Controller
             $dayPointer->addDay();
         }
 
-        $leaveBalance = $employee
-            ? (float) $employee->leaveBalances()->sum('remaining_days')
-            : 0;
+        $monthStart = now()->startOfMonth();
+        $monthEnd = now()->endOfMonth();
+        $firstCutoffEnd = $monthStart->copy()->day(15);
+        $secondCutoffStart = $monthStart->copy()->day(16);
+
+        $presentDaysFirstCutoff = 0;
+        $presentDaysSecondCutoff = 0;
+        $latestApprovedSchedule = null;
+
+        if ($employee) {
+            $presentDaysFirstCutoff = AttendanceRecord::query()
+                ->where('employee_id', $employee->id)
+                ->where('status', 'present')
+                ->whereBetween('record_date', [$monthStart->toDateString(), $firstCutoffEnd->toDateString()])
+                ->count();
+
+            $presentDaysSecondCutoff = AttendanceRecord::query()
+                ->where('employee_id', $employee->id)
+                ->where('status', 'present')
+                ->whereBetween('record_date', [$secondCutoffStart->toDateString(), $monthEnd->toDateString()])
+                ->count();
+
+            $latestApprovedSchedule = EmployeeScheduleSubmission::query()
+                ->where('employee_id', $employee->id)
+                ->where('status', EmployeeScheduleSubmission::STATUS_APPROVED)
+                ->latest('reviewed_at')
+                ->latest('updated_at')
+                ->first();
+        }
 
         return view('employee.dashboard', [
             'employee' => $employee,
             'stats' => [
-                'active_credentials' => $activeCredentials,
-                'pending_credentials' => $pendingCredentials,
-                'compliance_total' => max($totalCredentials, 1),
-                'compliance_passed' => $compliantCount + $expiringSoonCount,
-                'leave_balance' => $leaveBalance,
                 'notifications' => $notificationsCount,
-                'compliant' => $compliantCount,
-                'expiring_soon' => $expiringSoonCount,
-                'non_compliant' => max($totalCredentials - $compliantCount - $expiringSoonCount, 0),
             ],
+            'presentDays' => [
+                'first_cutoff' => $presentDaysFirstCutoff,
+                'second_cutoff' => $presentDaysSecondCutoff,
+            ],
+            'latestApprovedSchedule' => $latestApprovedSchedule,
             'recentAlerts' => $recentAlerts,
             'calendar' => [
                 'month_label' => now()->format('F Y'),
@@ -684,23 +693,127 @@ class PortalController extends Controller
         ]);
     }
 
-    public function account(Request $request): View
+    public function profile(Request $request): View
     {
-        $employee = Employee::query()->with('department')->where('email', $request->user()->email)->first();
+        $employee = Employee::query()
+            ->with(['department', 'credentials' => fn ($query) => $query
+                ->where('credential_type', 'degrees')
+                ->orderByRaw("CASE degree_level WHEN 'undergraduate' THEN 1 WHEN 'masters' THEN 2 WHEN 'doctoral' THEN 3 ELSE 4 END")])
+            ->where('email', $request->user()->email)
+            ->first();
 
         $phoneValue = $employee?->phone;
         $phoneValue = is_string($phoneValue) ? preg_replace('/^\+?63/', '', trim($phoneValue)) : null;
         $phoneValue = is_string($phoneValue) ? ltrim($phoneValue, '0') : null;
 
-        return view('employee.account', [
+        return view('employee.profile', [
             'employee' => $employee,
             'departments' => Department::query()->schools()->orderBy('name')->get(),
             'employeeTypes' => ['Faculty', 'ASP'],
             'phoneValue' => $phoneValue,
+            'degrees' => $employee?->credentials ?? collect(),
         ]);
     }
 
-    public function updateAccount(UpdateEmployeeAccountRequest $request): RedirectResponse
+    public function storeDegree(StoreDegreeSubmissionRequest $request, SupabaseStorageService $storage): RedirectResponse
+    {
+        $employee = Employee::query()->where('email', $request->user()->email)->firstOrFail();
+        $degreeLevel = $request->string('degree_level')->toString();
+
+        $existing = EmployeeCredential::query()
+            ->where('employee_id', $employee->id)
+            ->where('credential_type', 'degrees')
+            ->where('degree_level', $degreeLevel)
+            ->exists();
+
+        if ($existing) {
+            return back()->with('error', 'Delete the existing '.$this->degreeLevelLabel($degreeLevel).' before uploading a new file.');
+        }
+
+        if (! $storage->isEnabled()) {
+            return back()->with('error', 'File storage is not configured. Please contact the administrator.');
+        }
+
+        $file = $request->file('degree_file');
+
+        try {
+            $filePath = $storage->uploadFile($file, 'employee-'.$employee->id.'/degrees');
+        } catch (\Throwable $exception) {
+            Log::error('Degree file upload failed', [
+                'employee_id' => $employee->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return back()->withInput()->with('error', 'The degree file could not be uploaded. Please try again.');
+        }
+
+        DB::transaction(function () use ($request, $employee, $degreeLevel, $file, $filePath): void {
+            $credential = EmployeeCredential::create([
+                'employee_id' => $employee->id,
+                'credential_type' => 'degrees',
+                'degree_level' => $degreeLevel,
+                'title' => $this->degreeLevelLabel($degreeLevel),
+                'department_id' => $employee->department_id,
+                'file_path' => $filePath,
+                'original_filename' => $file->getClientOriginalName(),
+                'status' => 'pending',
+            ]);
+
+            $announcement = Announcement::create([
+                'title' => 'New degree submission',
+                'content' => sprintf('%s submitted a %s for HR review.', $employee->full_name, $credential->title),
+                'priority' => 'medium',
+                'target_user_type' => User::TYPE_HR,
+                'published_at' => now(),
+                'is_published' => true,
+                'created_by' => $request->user()->id,
+            ]);
+
+            $now = now();
+            $rows = User::query()->where('user_type', User::TYPE_HR)->get(['id'])->map(fn (User $user) => [
+                'announcement_id' => $announcement->id,
+                'user_id' => $user->id,
+                'is_read' => false,
+                'read_at' => null,
+                'redirect_url' => route('employees.profile', ['employee' => $employee->id]),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->all();
+
+            if ($rows !== []) {
+                AnnouncementNotification::insert($rows);
+            }
+        });
+
+        return back()->with('success', $this->degreeLevelLabel($degreeLevel).' submitted for HR review.');
+    }
+
+    public function destroyDegree(Request $request, EmployeeCredential $credential, SupabaseStorageService $storage): RedirectResponse
+    {
+        $employee = Employee::query()->where('email', $request->user()->email)->firstOrFail();
+        abort_unless($credential->employee_id === $employee->id && $credential->credential_type === 'degrees', 403);
+
+        $filePath = $credential->file_path;
+        $credential->delete();
+
+        if ($filePath && $storage->isEnabled() && ! $storage->delete($filePath)) {
+            Log::warning('Unable to delete degree file from storage', ['credential_id' => $credential->id, 'file_path' => $filePath]);
+        }
+
+        return back()->with('success', 'Degree submission deleted. You may upload a new file.');
+    }
+
+    private function degreeLevelLabel(string $degreeLevel): string
+    {
+        return match ($degreeLevel) {
+            'undergraduate' => 'Undergraduate Degree',
+            'masters' => "Master's Degree",
+            'doctoral' => 'Doctoral Degree',
+            default => 'Academic Degree',
+        };
+    }
+
+    public function updateProfile(UpdateEmployeeProfileRequest $request): RedirectResponse
     {
         $employee = Employee::query()->where('email', $request->user()->email)->first();
 
@@ -711,7 +824,7 @@ class PortalController extends Controller
             ]);
         }
 
-        return redirect()->route('employee.account')->with('success', 'Account updated successfully.');
+        return redirect()->route('employee.profile')->with('success', 'Profile updated successfully.');
     }
 
     /**
@@ -760,7 +873,7 @@ class PortalController extends Controller
             'synced' => $synced,
         ]);
 
-        return redirect()->route('employee.account')->with('password_success', 'Password changed successfully.');
+        return redirect()->route('employee.profile')->with('password_success', 'Password changed successfully.');
     }
 
     private function buildAttendanceResult(array $totals, ?EmployeeScheduleSubmission $currentSchedule, bool $hasRecords): array

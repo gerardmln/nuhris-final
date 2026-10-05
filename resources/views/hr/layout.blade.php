@@ -54,7 +54,7 @@
             {{-- Navigation --}}
             <nav class="flex-1 overflow-y-auto px-3 py-5" data-testid="hr-sidebar-nav">
                 <ul class="space-y-1.5">
-                    @foreach ($navItems as $item)
+                    @foreach (collect($navItems)->reject(fn ($item) => $item['label'] === 'Credentials') as $item)
                         @php($active = ($activeNav ?? '') === $item['key'])
                         <li class="nav-item">
                             <a href="{{ route($item['route']) }}"

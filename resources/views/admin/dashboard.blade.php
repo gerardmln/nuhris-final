@@ -1,29 +1,20 @@
 @extends('admin.layout')
 
 @section('title', 'Admin Dashboard')
-@section('page_title', 'Dashboard')
+@section('page_title', 'Admin Dashboard')
+@section('hide_page_heading', true)
 
 @section('content')
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <p class="text-sm font-semibold text-slate-600">Welcome Back, Admin!</p>
+
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
             <p class="text-xs font-medium text-slate-500">Total Employees</p>
             <p class="mt-1 text-4xl font-extrabold">{{ $stats['total_employees'] }}</p>
         </article>
-        <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">Compliance Rate</p>
-            <p class="mt-1 text-4xl font-extrabold">{{ $stats['compliance_rate'] }}%</p>
-        </article>
-        <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">Expiring PRC</p>
-            <p class="mt-1 text-4xl font-extrabold">{{ $stats['expiring_prc'] }}</p>
-        </article>
-        <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">Pending Verifications</p>
-            <p class="mt-1 text-4xl font-extrabold">{{ $stats['pending_verifications'] }}</p>
-        </article>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 xl:grid-cols-3">
+    <div class="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-3">
         <div class="space-y-4 xl:col-span-2">
             <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
                 <h2 class="mb-3 text-2xl font-bold text-slate-800">Action Required</h2>
@@ -53,7 +44,7 @@
                             };
                         @endphp
 
-                        <a href="{{ $card['href'] }}" class="flex items-center justify-between rounded-xl px-4 py-3 shadow-sm transition {{ $toneStyles }}">
+                        <a href="{{ $card['href'] }}" class="flex items-center justify-between rounded-xl px-4 py-3 shadow-sm transition {{ $toneStyles }} {{ $loop->last ? 'md:col-span-2' : '' }}">
                             <div>
                                 <p class="font-semibold {{ $countToneStyles }}">{{ $card['count'] }} {{ $card['title'] }}</p>
                                 <p class="text-xs {{ $descriptionToneStyles }}">{{ $card['count'] > 0 ? $card['description'] : $card['empty_label'] }}</p>
@@ -68,7 +59,7 @@
                 <h2 class="mb-2 text-2xl font-bold text-slate-800">Records Overview</h2>
                 <p class="mb-3 text-sm text-slate-500">Current administrative records and activity.</p>
 
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                     @foreach ($recordsOverview as $record)
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                             <p class="text-sm font-semibold text-slate-700">{{ $record['label'] }}</p>
@@ -80,7 +71,7 @@
         </div>
 
         <div class="space-y-4">
-            <article class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
+            <article class="h-full rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
                 <div class="flex items-start justify-between gap-3">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-800">Calendar</h2>
