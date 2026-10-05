@@ -3,13 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\TimekeeperCredentialsMail;
 use App\Models\Department;
-use App\Models\Employee;
 use App\Models\User;
 use App\Services\AuditLogService;
+use App\Services\SupabaseAuthSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class RoleManagementController extends Controller
@@ -83,7 +88,7 @@ class RoleManagementController extends Controller
     public function updateRole(Request $request, User $user): RedirectResponse
     {
         $validated = $request->validate([
-            'user_type' => 'required|integer|in:' . User::TYPE_ADMIN . ',' . User::TYPE_HR . ',' . User::TYPE_EMPLOYEE,
+            'user_type' => 'required|integer|in:'.User::TYPE_ADMIN.','.User::TYPE_HR.','.User::TYPE_EMPLOYEE,
         ]);
 
         // Prevent removing all admins
@@ -118,6 +123,61 @@ class RoleManagementController extends Controller
 
         return redirect()->route('admin.roles.index')
             ->with('success', "{$user->name}'s role has been changed from {$oldRole} to {$newRole}.");
+    }
+
+    public function addTimekeeper(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+        ]);
+
+        $email = strtolower(trim($validated['email']));
+        $temporaryPassword = Str::upper(Str::random(4)).'-'.random_int(1000, 9999);
+        $name = Str::of(Str::before($email, '@'))
+            ->replace(['.', '_', '-'], ' ')
+            ->title()
+            ->toString() ?: 'Timekeeper';
+
+        $user = DB::transaction(function () use ($email, $name, $temporaryPassword) {
+            $user = User::create([
+                'name' => $name,
+                'email' => $email,
+                'password' => Hash::make($temporaryPassword),
+                'user_type' => User::TYPE_HR,
+            ]);
+
+            app(SupabaseAuthSyncService::class)->syncUser($user, $temporaryPassword);
+
+            return $user;
+        });
+
+        $emailStatus = ['sent' => false, 'message' => null];
+
+        try {
+            Mail::to($user->email)->send(new TimekeeperCredentialsMail($user, $temporaryPassword));
+            $emailStatus['sent'] = true;
+        } catch (\Throwable $exception) {
+            Log::warning('Admin: Failed to send timekeeper credentials email', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $exception->getMessage(),
+            ]);
+            $emailStatus['message'] = 'Email delivery failed because SMTP authentication is unavailable right now. Please share the credentials manually.';
+        }
+
+        app(AuditLogService::class)->record(
+            'CREATE',
+            'Role Management',
+            'Created HR Timekeeper account for '.$user->email.'.',
+            $emailStatus['sent'] ? 'Success' : 'Failed',
+            ['user_id' => $user->id, 'email' => $user->email, 'email_sent' => $emailStatus['sent']]
+        );
+
+        return redirect()->route('admin.roles.index')
+            ->with($emailStatus['sent'] ? 'success' : 'error', $emailStatus['sent']
+                ? "Timekeeper account created and credentials sent to {$user->email}."
+                : "Timekeeper account created, but credentials could not be emailed to {$user->email}.")
+            ->with('credential_notice', ['email' => $user->email, 'email_status' => $emailStatus]);
     }
 
     private function roleLabel(int $userType): string

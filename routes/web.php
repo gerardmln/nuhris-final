@@ -316,6 +316,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
     // ========== ROLE MANAGEMENT ==========
     Route::prefix('roles')->name('roles.')->group(function () {
         Route::get('/', [RoleManagementController::class, 'index'])->name('index');
+        Route::post('/timekeepers', [RoleManagementController::class, 'addTimekeeper'])->name('timekeepers.store');
         Route::put('/{user}', [RoleManagementController::class, 'updateRole'])->whereNumber('user')->name('update');
     });
 
