@@ -276,6 +276,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
     // ========== DTR / TIMEKEEPING EDITING (ADMIN-ONLY) ==========
     Route::prefix('dtr')->name('dtr.')->group(function () {
         Route::get('/', [AdminOperationsController::class, 'dtrIndex'])->name('index');
+        Route::get('/view', [OperationsController::class, 'dailyTimeRecord'])->name('view');
+        Route::get('/view/export-pdf', [OperationsController::class, 'exportDtrPdf'])->name('view.export-pdf');
+        Route::get('/view/export-excel', [OperationsController::class, 'exportDtrExcel'])->name('view.export-excel');
         Route::get('/export-pdf', [AdminOperationsController::class, 'exportDtrPdf'])->name('export-pdf');
         Route::get('/export-excel', [AdminOperationsController::class, 'exportDtrExcel'])->name('export-excel');
         Route::post('/upload', [AdminOperationsController::class, 'uploadDtr'])->name('upload');

@@ -530,6 +530,7 @@ class OperationsController extends Controller
                 'selectedYear' => $year,
                 'attendanceRange' => $attendanceRange,
                 'rangeLabel' => $rangeLabel,
+                'adminView' => $request->routeIs('admin.dtr.view'),
             ]);
         } catch (\Throwable $e) {
             return back()
@@ -2020,6 +2021,8 @@ class OperationsController extends Controller
                 // Sunday is always a calendar weekend (not in employee schedule 1-6)
                 if ($dayOfWeekIso === 7) {
                     return [
+                        'iso_date' => $dateKey,
+                        'is_future' => true,
                         'date' => $date->format('M j'),
                         'day' => $date->format('D'),
                         'time_in' => '-',
@@ -2033,6 +2036,8 @@ class OperationsController extends Controller
                 if ($employee) {
                     if ($date->isAfter(now())) {
                         return [
+                            'iso_date' => $dateKey,
+                            'is_future' => true,
                             'date' => $date->format('M j'),
                             'day' => $date->format('D'),
                             'time_in' => '-',
@@ -2062,6 +2067,9 @@ class OperationsController extends Controller
                     };
 
                     return [
+                        'iso_date' => $dateKey,
+                        'attendance_id' => $record?->id,
+                        'is_future' => false,
                         'date' => $date->format('M j'),
                         'day' => $date->format('D'),
                         'time_in' => $record?->time_in ? Carbon::parse($record->time_in)->format('H:i') : '-',
@@ -2077,6 +2085,7 @@ class OperationsController extends Controller
 
                 if ($date->isAfter(now())) {
                     return [
+                        'iso_date' => $dateKey,
                         'date' => $date->format('M j'),
                         'day' => $date->format('D'),
                         'time_in' => '-',
@@ -2088,6 +2097,7 @@ class OperationsController extends Controller
                 }
 
                 return [
+                    'iso_date' => $dateKey,
                     'date' => $date->format('M j'),
                     'day' => $date->format('D'),
                     'time_in' => '-',

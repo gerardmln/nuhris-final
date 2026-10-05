@@ -25,7 +25,7 @@
             </div>
         @endif
 
-        <a href="{{ route('timekeeping.index') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-900" data-testid="back-to-timekeeping">
+        <a href="{{ route(($adminView ?? false) ? 'admin.dtr.index' : 'timekeeping.index') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-900" data-testid="back-to-timekeeping">
             <span>&larr;</span>
             Back to Time Keeping
         </a>
@@ -40,7 +40,7 @@
                 </div>
                 <div class="flex flex-wrap gap-2">
                     {{-- Period Selector --}}
-                    <form method="GET" action="{{ route('timekeeping.dtr') }}" class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center" data-testid="dtr-period-form">
+                    <form method="GET" action="{{ route(($adminView ?? false) ? 'admin.dtr.view' : 'timekeeping.dtr') }}" class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center" data-testid="dtr-period-form">
                         <input type="hidden" name="employee" value="{{ $employee?->id }}">
                         <select name="period" onchange="this.form.querySelector('[name=month]').value=this.value.split('-')[0]; this.form.querySelector('[name=year]').value=this.value.split('-')[1]; this.form.submit();"
                                 data-testid="dtr-period-selector"
@@ -96,13 +96,13 @@
 
         {{-- Export Buttons --}}
         <div class="flex flex-wrap gap-2" data-testid="export-buttons">
-            <a href="{{ route('timekeeping.dtr.export-pdf', ['employee' => $employee?->id, 'month' => $selectedMonth, 'year' => $selectedYear, 'attendance_range' => $attendanceRange ?? 'month']) }}"
+            <a href="{{ route(($adminView ?? false) ? 'admin.dtr.view.export-pdf' : 'timekeeping.dtr.export-pdf', ['employee' => $employee?->id, 'month' => $selectedMonth, 'year' => $selectedYear, 'attendance_range' => $attendanceRange ?? 'month']) }}"
                data-testid="export-pdf-button"
                class="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 Export PDF
             </a>
-            <a href="{{ route('timekeeping.dtr.export-excel', ['employee' => $employee?->id, 'month' => $selectedMonth, 'year' => $selectedYear, 'attendance_range' => $attendanceRange ?? 'month']) }}"
+            <a href="{{ route(($adminView ?? false) ? 'admin.dtr.view.export-excel' : 'timekeeping.dtr.export-excel', ['employee' => $employee?->id, 'month' => $selectedMonth, 'year' => $selectedYear, 'attendance_range' => $attendanceRange ?? 'month']) }}"
                data-testid="export-excel-button"
                class="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
@@ -121,6 +121,9 @@
                         <th class="px-3 py-2">Tardiness</th>
                         <th class="px-3 py-2">Undertime</th>
                         <th class="px-3 py-2">Status</th>
+                        @if ($adminView ?? false)
+                            <th class="px-3 py-2">Actions</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
@@ -145,11 +148,50 @@
                                     <span class="text-slate-400">{{ $record['status'] }}</span>
                                 @endif
                             </td>
+                            @if ($adminView ?? false)
+                                <td class="relative px-3 py-2">
+                                    <div class="relative inline-block text-left">
+                                        <button type="button" class="dtr-row-actions-toggle inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200" aria-expanded="false" aria-haspopup="true">&middot;&middot;&middot;</button>
+                                        <div class="dtr-row-actions-menu absolute right-2 top-full z-50 mt-1 hidden w-36 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                            <div class="py-1">
+                                                @if (!empty($record['attendance_id']))
+                                                    <a href="{{ route('admin.dtr.edit', $record['attendance_id']) }}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Edit</a>
+                                                @elseif (empty($record['is_future']))
+                                                    <form method="POST" action="{{ route('admin.dtr.create') }}">
+                                                        @csrf
+                                                        <input type="hidden" name="employee_id" value="{{ $employee?->id }}">
+                                                        <input type="hidden" name="record_date" value="{{ $record['iso_date'] }}">
+                                                        <button type="submit" class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">Add</button>
+                                                    </form>
+                                                @else
+                                                    <span class="block px-4 py-2 text-sm text-slate-400">—</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            @endif
                         </tr>
                     @endforeach
                 </tbody>
             </table>
         </article>
     </main>
+    @if ($adminView ?? false)
+        <script>
+            document.querySelectorAll('.dtr-row-actions-toggle').forEach((toggle) => {
+                toggle.addEventListener('click', () => {
+                    const menu = toggle.parentElement.querySelector('.dtr-row-actions-menu');
+                    document.querySelectorAll('.dtr-row-actions-menu').forEach((otherMenu) => {
+                        if (otherMenu !== menu) {
+                            otherMenu.classList.add('hidden');
+                        }
+                    });
+                    menu.classList.toggle('hidden');
+                    toggle.setAttribute('aria-expanded', String(!menu.classList.contains('hidden')));
+                });
+            });
+        </script>
+    @endif
 </body>
 </html>
