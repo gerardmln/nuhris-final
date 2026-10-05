@@ -9,7 +9,7 @@
         <p class="text-sm text-slate-500">Here is an overview of your HR information.</p>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <article class="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
             <p class="text-xs font-medium text-slate-500">Present Days (1st–15th)</p>
             <p class="mt-1 text-4xl font-extrabold">{{ $presentDays['first_cutoff'] }}</p>
@@ -19,11 +19,6 @@
             <p class="text-xs font-medium text-slate-500">Present Days (16th–End)</p>
             <p class="mt-1 text-4xl font-extrabold">{{ $presentDays['second_cutoff'] }}</p>
             <p class="text-xs text-slate-500">Current month second cutoff</p>
-        </article>
-        <article class="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm">
-            <p class="text-xs font-medium text-slate-500">Notifications</p>
-            <p class="mt-1 text-4xl font-extrabold">{{ $stats['notifications'] }}</p>
-            <p class="text-xs text-slate-500">Recent alerts</p>
         </article>
         <a href="{{ route('employee.profile') }}" class="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm transition hover:bg-blue-100">
             <p class="text-xs font-medium text-blue-700">Quick Access</p>
