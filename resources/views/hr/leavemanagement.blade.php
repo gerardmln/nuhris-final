@@ -12,6 +12,16 @@
             <p class="text-sm text-slate-500">Import leave applications (.xlsx) and view employee leave data</p>
         </div>
         <div class="flex items-center gap-2">
+            <div class="flex max-w-[24rem] items-center gap-2 text-xs text-slate-500">
+                <span class="whitespace-nowrap">Latest uploaded file:</span>
+                <select class="min-w-0 truncate rounded-md border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700" aria-label="Latest uploaded leave files">
+                    @forelse ($latestLeaveUploads as $upload)
+                        <option>{{ $upload->metadata['original_filename'] }} ({{ $upload->created_at->format('M j, Y g:i A') }})</option>
+                    @empty
+                        <option>No uploaded leave files</option>
+                    @endforelse
+                </select>
+            </div>
             <button data-open-modal="upload-leaves-modal" class="rounded-lg bg-[#00386f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f5d]">Upload Leave File</button>
         </div>
     </div>

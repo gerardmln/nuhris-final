@@ -8,12 +8,23 @@
 @section('title', 'Leave Management')
 
 @section('content')
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-            <p class="text-sm text-slate-500">Import leave applications (.xlsx) and view employee leave data</p>
-        </div>
-        <div class="flex items-center gap-2">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="flex max-w-[24rem] items-center gap-2 text-xs text-slate-500">
+                <span class="whitespace-nowrap">Latest uploaded file:</span>
+                <select class="min-w-0 truncate rounded-md border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700" aria-label="Latest uploaded leave files">
+                    @forelse ($latestLeaveUploads as $upload)
+                        <option>{{ $upload->metadata['original_filename'] }} ({{ $upload->created_at->format('M j, Y g:i A') }})</option>
+                    @empty
+                        <option>No uploaded leave files</option>
+                    @endforelse
+                </select>
+            </div>
             <button data-open-modal="upload-leaves-modal" class="rounded-lg bg-[#00386f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f5d]">Upload Leave File</button>
+            <form method="POST" action="{{ route('admin.leave.clear-cache') }}" onsubmit="return confirm('Clear leave file cache? Leave records will not be affected.');">
+                @csrf
+                <button type="submit" class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 transition">Clear Leave File Cache</button>
+            </form>
         </div>
     </div>
 

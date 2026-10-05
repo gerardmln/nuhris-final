@@ -797,6 +797,14 @@ class OperationsController extends Controller
 
         return view('hr.leavemanagement', [
             'leaveCards' => $leaveCards,
+            'latestLeaveUploads' => AdminAuditLog::query()
+                ->where('module', 'Leave Management')
+                ->where('action', 'CREATE')
+                ->where('status', 'Success')
+                ->whereNotNull('metadata->original_filename')
+                ->latest()
+                ->limit(10)
+                ->get(),
             'departments' => Department::query()->facultySchools()->orderBy('name')->get(),
             'filters' => [
                 'search' => $search,
@@ -1089,6 +1097,8 @@ class OperationsController extends Controller
      */
     public function uploadLeaves(Request $request, LeaveMonitoringService $leaveMonitoringService): RedirectResponse
     {
+        @set_time_limit(180);
+
         $validated = $request->validate([
             'leaves_file' => ['required', 'file', 'mimes:xlsx,xls', 'max:10240'],
         ], [

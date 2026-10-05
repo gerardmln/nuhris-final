@@ -279,6 +279,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
         Route::get('/export-pdf', [AdminOperationsController::class, 'exportDtrPdf'])->name('export-pdf');
         Route::get('/export-excel', [AdminOperationsController::class, 'exportDtrExcel'])->name('export-excel');
         Route::post('/upload', [AdminOperationsController::class, 'uploadDtr'])->name('upload');
+        Route::post('/clear-cache', [AdminOperationsController::class, 'clearDtrCache'])->name('clear-cache');
         Route::post('/clear-all', [AdminOperationsController::class, 'clearAllDtr'])->name('clear-all');
         Route::post('/employee/{employee}/clear', [AdminOperationsController::class, 'clearEmployeeDtr'])->whereNumber('employee')->name('clear-employee');
         Route::get('/{record}/edit', [AdminOperationsController::class, 'editDtrRecord'])->whereNumber('record')->name('edit');
@@ -300,6 +301,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
     Route::prefix('leave-management')->name('leave.')->group(function () {
         Route::get('/', [AdminOperationsController::class, 'leaveIndex'])->name('index');
         Route::post('/upload', [AdminOperationsController::class, 'uploadLeaves'])->name('upload');
+        Route::post('/clear-cache', [AdminOperationsController::class, 'clearLeaveFileCache'])->name('clear-cache');
     });
 
     // ========== SCHEDULE MANAGEMENT (ADMIN-ONLY) ==========

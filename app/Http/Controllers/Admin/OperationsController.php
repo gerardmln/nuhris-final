@@ -652,6 +652,28 @@ class OperationsController extends Controller
         }
     }
 
+    public function clearDtrCache(): RedirectResponse
+    {
+        $uploadLogs = AdminAuditLog::query()
+            ->where('module', 'DTR')
+            ->where('action', 'CREATE')
+            ->where('status', 'Success')
+            ->whereNotNull('metadata->original_filename');
+
+        $deleted = $uploadLogs->delete();
+        $entryLabel = $deleted === 1 ? 'entry' : 'entries';
+
+        $this->logAudit('DELETE', 'DTR', "Cleared {$deleted} DTR upload cache {$entryLabel}.", 'Success', [
+            'deleted_upload_entries' => $deleted,
+            'attendance_records_affected' => false,
+        ]);
+
+        return redirect()->route('admin.dtr.index')
+            ->with('success', $deleted > 0
+                ? "Cleared {$deleted} DTR upload cache {$entryLabel}."
+                : 'DTR upload cache is already clear. Attendance records were not changed.');
+    }
+
     /**
      * Parse biometric text extracted from PDF into structured records.
      */
@@ -1630,6 +1652,14 @@ class OperationsController extends Controller
 
         return view('admin.leave-management.index', [
             'leaveCards' => $leaveCards,
+            'latestLeaveUploads' => AdminAuditLog::query()
+                ->where('module', 'Leave Management')
+                ->where('action', 'CREATE')
+                ->where('status', 'Success')
+                ->whereNotNull('metadata->original_filename')
+                ->latest()
+                ->limit(10)
+                ->get(),
             'departments' => Department::query()->facultySchools()->orderBy('name')->get(),
             'filters' => [
                 'search' => $search,
@@ -1648,6 +1678,8 @@ class OperationsController extends Controller
 
     public function uploadLeaves(Request $request, LeaveMonitoringService $leaveMonitoringService): RedirectResponse
     {
+        @set_time_limit(180);
+
         $validated = $request->validate([
             'leaves_file' => ['required', 'file', 'mimes:xlsx,xls', 'max:10240'],
         ], [
@@ -1851,6 +1883,7 @@ class OperationsController extends Controller
         $message .= '.';
 
         $this->logAudit('CREATE', 'Leave Management', $message, 'Success', [
+            'original_filename' => $file->getClientOriginalName(),
             'imported' => $imported,
             'updated' => $updated,
             'skipped' => $skipped,
@@ -1865,6 +1898,28 @@ class OperationsController extends Controller
                 'skipped' => $skipped,
                 'total_records' => count($dataRows),
             ]);
+    }
+
+    public function clearLeaveFileCache(): RedirectResponse
+    {
+        $uploadLogs = AdminAuditLog::query()
+            ->where('module', 'Leave Management')
+            ->where('action', 'CREATE')
+            ->where('status', 'Success')
+            ->whereNotNull('metadata->original_filename');
+
+        $deleted = $uploadLogs->delete();
+        $entryLabel = $deleted === 1 ? 'entry' : 'entries';
+
+        $this->logAudit('DELETE', 'Leave Management', "Cleared {$deleted} leave file cache {$entryLabel}.", 'Success', [
+            'deleted_upload_entries' => $deleted,
+            'leave_records_affected' => false,
+        ]);
+
+        return redirect()->route('admin.leave.index')
+            ->with('success', $deleted > 0
+                ? "Cleared {$deleted} leave file cache {$entryLabel}."
+                : 'Leave file cache is already clear. Leave records were not changed.');
     }
 
     private function logAudit(string $action, string $module, string $description, string $status = 'Success', array $metadata = []): void

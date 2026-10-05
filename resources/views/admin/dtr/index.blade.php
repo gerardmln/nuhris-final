@@ -8,10 +8,7 @@
 @endphp
 
 @section('content')
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-            <p class="text-sm text-slate-500">View biometric attendance records, print DTR, and upload DTR files</p>
-        </div>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
         <div class="flex flex-wrap items-center gap-2">
             <div class="flex max-w-[24rem] items-center gap-2 text-xs text-slate-500">
                 <span class="whitespace-nowrap">Last uploaded file:</span>
@@ -24,6 +21,10 @@
                 </select>
             </div>
             <button data-open-modal="upload-dtr-modal" class="rounded-lg bg-[#00386f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f5d] transition">Upload DTR PDF</button>
+            <form method="POST" action="{{ route('admin.dtr.clear-cache') }}" onsubmit="return confirm('Clear DTR cache? Attendance records will not be affected.');">
+                @csrf
+                <button type="submit" class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 transition">Clear DTR Cache</button>
+            </form>
         </div>
     </div>
 
