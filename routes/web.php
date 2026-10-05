@@ -211,7 +211,6 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
 
     Route::get('/profile', [EmployeePortalController::class, 'profile'])->name('profile');
 
-    Route::post('/profile', [EmployeePortalController::class, 'updateProfile'])->name('profile.update');
     Route::post('/profile/degrees', [EmployeePortalController::class, 'storeDegree'])->name('profile.degrees.store');
     Route::get('/profile/degrees/{credential}/view', [EmployeePortalController::class, 'viewCredentialFile'])->whereNumber('credential')->name('profile.degrees.view');
     Route::delete('/profile/degrees/{credential}', [EmployeePortalController::class, 'destroyDegree'])->whereNumber('credential')->name('profile.degrees.destroy');

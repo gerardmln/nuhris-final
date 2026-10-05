@@ -26,8 +26,6 @@ class EmployeePortalSeeder extends Seeder
             'employee_id' => 'NU-EMP-0001',
             'first_name' => 'Test',
             'last_name' => 'Employee',
-            'phone' => '09170000001',
-            'address' => 'NU Lipa Campus',
             'department_id' => $departmentId,
             'position' => 'Instructor',
             'employment_type' => 'Faculty',

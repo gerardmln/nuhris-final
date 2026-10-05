@@ -54,23 +54,6 @@
                 </div>
             </div>
 
-            <form class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:col-span-2 js-loading-form" method="POST" action="{{ route('employee.profile.update') }}">
-            @csrf
-            <div>
-                <label class="mb-2 block text-sm font-semibold text-slate-700">Phone</label>
-                <div class="flex overflow-hidden rounded-lg border border-slate-300 bg-white text-sm focus-within:border-blue-400">
-                    <span class="inline-flex items-center border-r border-slate-300 bg-slate-50 px-3 font-semibold text-slate-600">+63</span>
-                    <input name="phone" type="text" class="w-full px-3 py-2 outline-none" value="{{ $phoneValue ?? '' }}" placeholder="9123456789">
-                </div>
-            </div>
-            <div>
-                <label class="mb-2 block text-sm font-semibold text-slate-700">Address</label>
-                <input name="address" type="text" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" value="{{ $employee->address ?? '' }}" placeholder="Home address">
-            </div>
-            <div class="lg:col-span-2">
-                <button type="submit" class="float-right rounded-xl bg-[#003a78] px-6 py-2 text-sm font-semibold text-white hover:bg-[#002f61]">Save Changes</button>
-            </div>
-            </form>
         </div>
     </article>
 

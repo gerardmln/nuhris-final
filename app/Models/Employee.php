@@ -50,8 +50,6 @@ class Employee extends Model
         'first_name',
         'last_name',
         'email',
-        'phone',
-        'address',
         'department_id',
         'position',
         'employment_type',

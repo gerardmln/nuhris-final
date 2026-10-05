@@ -72,8 +72,6 @@ class UpdateEmployeeRequest extends FormRequest
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('employees', 'email')->ignore($employeeId)],
-            'phone' => ['nullable', 'digits:10'],
-            'address' => ['nullable', 'string', 'max:255'],
             'department_id' => [Rule::requiredIf($requiresDepartment), 'nullable', 'exists:departments,id'],
             'position' => ['required', Rule::in($allowedPositions)],
             'employment_type' => ['required', Rule::in($employmentTypes)],
@@ -92,7 +90,6 @@ class UpdateEmployeeRequest extends FormRequest
         return [
             'position.in' => 'The selected position does not belong to the chosen Employee Type.',
             'ranking.in' => 'The selected Faculty Ranking does not match the selected Position.',
-            'phone.digits' => 'Mobile Number must contain exactly 10 digits after +63 (e.g., 9949960496).',
         ];
     }
 

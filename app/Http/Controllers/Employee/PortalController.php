@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Employee;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEmployeeCredentialRequest;
 use App\Http\Requests\StoreDegreeSubmissionRequest;
-use App\Http\Requests\UpdateEmployeeProfileRequest;
 use App\Models\Announcement;
 use App\Models\AnnouncementNotification;
 use App\Models\AcademicCalendarEntry;
@@ -702,15 +701,10 @@ class PortalController extends Controller
             ->where('email', $request->user()->email)
             ->first();
 
-        $phoneValue = $employee?->phone;
-        $phoneValue = is_string($phoneValue) ? preg_replace('/^\+?63/', '', trim($phoneValue)) : null;
-        $phoneValue = is_string($phoneValue) ? ltrim($phoneValue, '0') : null;
-
         return view('employee.profile', [
             'employee' => $employee,
             'departments' => Department::query()->schools()->orderBy('name')->get(),
             'employeeTypes' => ['Faculty', 'ASP'],
-            'phoneValue' => $phoneValue,
             'degrees' => $employee?->credentials ?? collect(),
         ]);
     }
@@ -813,20 +807,6 @@ class PortalController extends Controller
         };
     }
 
-    public function updateProfile(UpdateEmployeeProfileRequest $request): RedirectResponse
-    {
-        $employee = Employee::query()->where('email', $request->user()->email)->first();
-
-        if ($employee) {
-            $employee->update([
-                'phone' => $this->normalizePhilippinePhone($request->input('phone')),
-                'address' => $request->input('address'),
-            ]);
-        }
-
-        return redirect()->route('employee.profile')->with('success', 'Profile updated successfully.');
-    }
-
     /**
      * Change the employee's password.
      * Requires current (old) password + new password + confirmation.
@@ -908,25 +888,4 @@ class PortalController extends Controller
         ];
     }
 
-    private function normalizePhilippinePhone(?string $phone): ?string
-    {
-        $phone = trim((string) $phone);
-
-        if ($phone === '') {
-            return null;
-        }
-
-        $phone = preg_replace('/[^0-9+]/', '', $phone) ?? '';
-        $phone = ltrim($phone, '+');
-
-        if (str_starts_with($phone, '63')) {
-            return '+'.$phone;
-        }
-
-        if (str_starts_with($phone, '0')) {
-            $phone = substr($phone, 1);
-        }
-
-        return '+63'.$phone;
-    }
 }

@@ -24,7 +24,6 @@
 
             <dl class="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                 <div><dt class="font-semibold">Email</dt><dd>{{ $employee->email }}</dd></div>
-                <div><dt class="font-semibold">Phone</dt><dd>{{ $employee->phone ?? 'N/A' }}</dd></div>
                 <div><dt class="font-semibold">Department</dt><dd>{{ $employee->department->name ?? 'Unassigned' }}</dd></div>
                 <div><dt class="font-semibold">Hired</dt><dd>{{ optional($employee->hire_date)->format('M d, Y') ?? 'N/A' }}</dd></div>
                 <div><dt class="font-semibold">Approved Schedule</dt><dd>{{ $schedule_summary }}</dd></div>

@@ -21,7 +21,6 @@
                 <div><p class="text-xs text-slate-500">Employee ID</p><p class="font-semibold">{{ $employee->employee_id }}</p></div>
                 <div><p class="text-xs text-slate-500">Name</p><p class="font-semibold">{{ $employee->full_name }}</p></div>
                 <div><p class="text-xs text-slate-500">Email</p><p class="font-semibold">{{ $employee->email }}</p></div>
-                <div><p class="text-xs text-slate-500">Phone</p><p class="font-semibold">{{ $employee->phone ?? 'N/A' }}</p></div>
                 <div><p class="text-xs text-slate-500">Department</p><p class="font-semibold">{{ $employee->department?->name }}</p></div>
                 <div><p class="text-xs text-slate-500">Position</p><p class="font-semibold">{{ $employee->position }}</p></div>
                 <div><p class="text-xs text-slate-500">Employment Type</p><p class="font-semibold">{{ $employee->employment_type ?? 'N/A' }}</p></div>

@@ -246,8 +246,6 @@
                                                         data-employee-last-name="{{ $employee->last_name }}"
                                                         data-employee-full-name="{{ $employee->full_name }}"
                                                         data-employee-email="{{ $employee->email }}"
-                                                        data-employee-phone="{{ $employee->phone }}"
-                                                        data-employee-address="{{ $employee->address }}"
                                                         data-employee-department-id="{{ $employee->department_id }}"
                                                         data-employee-department-name="{{ $employee->department?->name }}"
                                                         data-employee-position="{{ $employee->position }}"
@@ -307,28 +305,6 @@
                 <div>
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Last Name *</label>
                     <input name="last_name" type="text" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg" required>
-                </div>
-                <div>
-                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Mobile Number</label>
-                    <div class="flex w-full overflow-hidden rounded-md border border-slate-300 focus-within:border-blue-400">
-                        <span class="inline-flex items-center border-r border-slate-300 bg-slate-50 px-3 text-base font-semibold text-slate-600">+63</span>
-                        <input
-                            name="phone"
-                            type="tel"
-                            inputmode="numeric"
-                            pattern="\d{10}"
-                            maxlength="10"
-                            autocomplete="tel-national"
-                            placeholder="9987654321"
-                            oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10);"
-                            class="w-full border-0 px-4 py-2 text-lg focus:outline-none"
-                        >
-                    </div>
-                    <p class="mt-1 text-xs text-slate-500">Enter 10 digits only. Example: +63 998 765 4321</p>
-                </div>
-                <div>
-                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Address</label>
-                    <input name="address" type="text" placeholder="Complete address" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg">
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Employee Type *</label>
@@ -421,28 +397,6 @@
                     <input name="last_name" type="text" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg" required>
                 </div>
                 <div>
-                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Mobile Number</label>
-                    <div class="flex w-full overflow-hidden rounded-md border border-slate-300 focus-within:border-blue-400">
-                        <span class="inline-flex items-center border-r border-slate-300 bg-slate-50 px-3 text-base font-semibold text-slate-600">+63</span>
-                        <input
-                            name="phone"
-                            type="tel"
-                            inputmode="numeric"
-                            pattern="\d{10}"
-                            maxlength="10"
-                            autocomplete="tel-national"
-                            placeholder="9987654321"
-                            oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10);"
-                            class="w-full border-0 px-4 py-2 text-lg focus:outline-none"
-                        >
-                    </div>
-                    <p class="mt-1 text-xs text-slate-500">Enter 10 digits only. Example: +63 998 765 4321</p>
-                </div>
-                <div>
-                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Address</label>
-                    <input name="address" type="text" placeholder="Complete address" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg">
-                </div>
-                <div>
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Employee Type *</label>
                     <select name="employment_type" data-employee-control="employment_type" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700" required>
                         <option value="">Select type</option>
@@ -531,14 +485,6 @@
                     <p id="details-email" class="text-2xl">maria.santos@nu.edu.ph</p>
                 </div>
                 <div>
-                    <p class="text-base text-slate-500">Phone</p>
-                    <p id="details-phone" class="text-2xl">+63 917 123 4567</p>
-                </div>
-                <div>
-                    <p class="text-base text-slate-500">Address</p>
-                    <p id="details-address" class="text-2xl">N/A</p>
-                </div>
-                <div>
                     <p class="text-base text-slate-500">Employment Type</p>
                     <p id="details-employment-type" class="text-2xl">Full-time Faculty</p>
                 </div>
@@ -590,14 +536,6 @@
                 <div>
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Last Name *</label>
                     <input id="edit-last-name" name="last_name" type="text" value="Santos" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg" required>
-                </div>
-                <div>
-                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Phone</label>
-                    <input id="edit-phone" name="phone" type="text" value="+63 917 123 4567" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg">
-                </div>
-                <div class="md:col-span-2">
-                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Address</label>
-                    <input id="edit-address" name="address" type="text" value="" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg">
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Employee Type *</label>
@@ -667,8 +605,6 @@
         const detailsEmployeeId = document.getElementById('details-employee-id');
         const detailsDepartment = document.getElementById('details-department');
         const detailsEmail = document.getElementById('details-email');
-        const detailsPhone = document.getElementById('details-phone');
-        const detailsAddress = document.getElementById('details-address');
         const detailsEmploymentType = document.getElementById('details-employment-type');
         const detailsRanking = document.getElementById('details-ranking');
         const detailsHireDate = document.getElementById('details-hire-date');
@@ -678,8 +614,6 @@
         const editEmail = document.getElementById('edit-email');
         const editFirstName = document.getElementById('edit-first-name');
         const editLastName = document.getElementById('edit-last-name');
-        const editPhone = document.getElementById('edit-phone');
-        const editAddress = document.getElementById('edit-address');
         const editDepartmentId = document.getElementById('edit-department-id');
         const editPosition = document.getElementById('edit-position');
         const editEmploymentType = document.getElementById('edit-employment-type');
@@ -702,8 +636,6 @@
             const firstName = trigger.dataset.employeeFirstName || '';
             const lastName = trigger.dataset.employeeLastName || '';
             const email = trigger.dataset.employeeEmail || '';
-            const phone = trigger.dataset.employeePhone || 'N/A';
-            const address = trigger.dataset.employeeAddress || 'N/A';
             const departmentName = trigger.dataset.employeeDepartmentName || 'N/A';
             const departmentId = trigger.dataset.employeeDepartmentId || '';
             const position = trigger.dataset.employeePosition || '';
@@ -722,8 +654,6 @@
             if (detailsEmployeeId) detailsEmployeeId.textContent = employeeCode || 'N/A';
             if (detailsDepartment) detailsDepartment.textContent = departmentName;
             if (detailsEmail) detailsEmail.textContent = email || 'N/A';
-            if (detailsPhone) detailsPhone.textContent = phone || 'N/A';
-            if (detailsAddress) detailsAddress.textContent = address || 'N/A';
             if (detailsEmploymentType) detailsEmploymentType.textContent = employmentType || 'N/A';
             if (detailsRanking) detailsRanking.textContent = ranking || 'N/A';
             if (detailsHireDate) detailsHireDate.textContent = formatDateForDetails(hireDate);
@@ -740,8 +670,6 @@
             if (editEmail) editEmail.value = email;
             if (editFirstName) editFirstName.value = firstName;
             if (editLastName) editLastName.value = lastName;
-            if (editPhone) editPhone.value = phone === 'N/A' ? '' : phone;
-            if (editAddress) editAddress.value = address === 'N/A' ? '' : address;
             if (editDepartmentId) editDepartmentId.value = departmentId;
             if (editEmploymentType) editEmploymentType.value = employmentType === 'N/A' ? '' : employmentType;
             if (editPosition) editPosition.value = position;

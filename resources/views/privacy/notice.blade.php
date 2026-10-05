@@ -32,7 +32,7 @@
                     <section>
                         <h2 class="text-lg font-bold text-[#1f2b5d]">2. Personal Data We Collect</h2>
                         <div class="mt-3 space-y-4">
-                            <div><h3 class="font-semibold text-slate-900">Identity and contact information</h3><p>Employee ID, first name, last name, email address, mobile number, address, department, position, employee type, faculty ranking, employment status, hire date, and official work schedule or time information.</p></div>
+                            <div><h3 class="font-semibold text-slate-900">Identity and employment information</h3><p>Employee ID, first name, last name, email address, department, position, employee type, faculty ranking, employment status, hire date, and official work schedule or time information.</p></div>
                             <div><h3 class="font-semibold text-slate-900">Account and authentication information</h3><p>Account name, email address, password hashes, role, email-verification status, password-reset information, session information, IP address, and user-agent information.</p></div>
                             <div><h3 class="font-semibold text-slate-900">Degree information</h3><p>Degree level, degree title, description, submitted document details, submission status, reviewer, review date, and review notes. Degree documents may contain additional information depending on what the employee submits.</p></div>
                             <div><h3 class="font-semibold text-slate-900">Attendance and DTR information</h3><p>Attendance dates, time-in, time-out, scheduled times, tardiness, undertime, overtime, schedule status, attendance status, and system-generated attendance notes or calculations.</p></div>

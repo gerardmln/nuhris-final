@@ -4,14 +4,6 @@
     $submitLabel = $submitLabel ?? ($isEdit ? 'Update Employee' : 'Create Employee');
     $facultyPositions = $facultyPositions ?? [];
     $aspPositions = $aspPositions ?? [];
-    $rawPhone = (string) old('phone', $employee->phone ?? '');
-    $phoneDigits = preg_replace('/\D+/', '', $rawPhone) ?? '';
-
-    if (str_starts_with($phoneDigits, '63') && strlen($phoneDigits) === 12) {
-        $phoneDigits = substr($phoneDigits, 2);
-    } elseif (str_starts_with($phoneDigits, '0') && strlen($phoneDigits) === 11) {
-        $phoneDigits = substr($phoneDigits, 1);
-    }
 @endphp
 
 @php
@@ -51,34 +43,6 @@
         <label for="last_name" class="mb-1 block text-sm font-semibold text-slate-700">Last Name *</label>
         <input id="last_name" name="last_name" type="text" value="{{ old('last_name', $employee->last_name ?? '') }}" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none" required>
         @error('last_name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-    </div>
-
-    <div>
-        <label for="phone" class="mb-1 block text-sm font-semibold text-slate-700">Mobile Number</label>
-        <div class="flex w-full overflow-hidden rounded-md border border-slate-300 focus-within:border-blue-400">
-            <span class="inline-flex items-center border-r border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-slate-600">+63</span>
-            <input
-                id="phone"
-                name="phone"
-                type="tel"
-                value="{{ $phoneDigits }}"
-                inputmode="numeric"
-                pattern="\d{10}"
-                maxlength="10"
-                autocomplete="tel-national"
-                placeholder="9987654321"
-                oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10);"
-                class="w-full border-0 px-3 py-2 text-sm focus:outline-none"
-            >
-        </div>
-        <p class="mt-1 text-xs text-slate-500">Enter 10 digits only. Example: +63 998 765 4321</p>
-        @error('phone')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-    </div>
-
-    <div>
-        <label for="address" class="mb-1 block text-sm font-semibold text-slate-700">Address</label>
-        <input id="address" name="address" type="text" value="{{ old('address', $employee->address ?? '') }}" placeholder="Complete address" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
-        @error('address')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
     </div>
 
     <div>
