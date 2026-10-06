@@ -133,7 +133,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         (() => {
             const entries = @json($academicCalendarEntries);
             const modal = document.getElementById('academic-calendar-modal');

@@ -150,7 +150,7 @@
         </section>
     </main>
 
-    <script>
+    <script @cspNonce>
         const acknowledgement = document.getElementById('privacy-acknowledged');
         const continueButton = document.getElementById('privacy-continue');
         acknowledgement.addEventListener('change', () => {

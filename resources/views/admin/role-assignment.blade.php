@@ -87,7 +87,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         (() => {
             const modal = document.getElementById('role-modal');
             const modalUser = document.getElementById('modal-user');

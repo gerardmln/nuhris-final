@@ -214,7 +214,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @cspNonce>
     (function () {
         // ====== 3-dots dropdown ======
         const toggles = document.querySelectorAll('.user-menu-toggle');

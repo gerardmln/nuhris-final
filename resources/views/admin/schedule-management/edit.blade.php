@@ -102,7 +102,7 @@
         </div>
     </form>
 
-    <script>
+    <script @cspNonce>
         document.querySelectorAll('[data-day-card]').forEach((card) => {
             const toggle = card.querySelector('[data-has-work-toggle]');
             const times = card.querySelector('[data-day-times]');

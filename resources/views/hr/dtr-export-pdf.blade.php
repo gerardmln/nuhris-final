@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>Daily Time Record</title>
-    <style>
+    <style @cspNonce>
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #1e293b; margin: 0; padding: 20px; }
         .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #00386f; padding-bottom: 15px; }
         .header h1 { margin: 0; font-size: 20px; color: #00386f; }

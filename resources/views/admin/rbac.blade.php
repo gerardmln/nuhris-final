@@ -87,7 +87,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         (() => {
             const matrixTab = document.getElementById('rbac-tab-matrix');
             const roleTab = document.getElementById('rbac-tab-role');

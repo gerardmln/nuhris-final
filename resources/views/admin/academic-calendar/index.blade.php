@@ -218,7 +218,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         (() => {
             const modal = document.getElementById('entry-modal');
             const form = document.getElementById('entry-form');

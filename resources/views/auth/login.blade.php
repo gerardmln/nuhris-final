@@ -6,10 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Login | NU HRIS</title>
     @include('partials.favicon')
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700,800&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <style>
+    <style @cspNonce>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
@@ -185,7 +183,7 @@
         </div>
     </div>
 
-    <script>
+    <script @cspNonce>
         // Password toggle
         const toggleBtn = document.getElementById('toggle-password');
         const passwordInput = document.getElementById('password');
@@ -200,39 +198,6 @@
                 eyeClosed.classList.toggle('hidden', isPassword);
             });
         }
-
-        // Remember me: autofill email on load, save/remove on submit
-        (function () {
-            const REMEMBER_KEY = 'nuhris_remember_email';
-            const emailInput = document.getElementById('email');
-            const rememberCheckbox = document.getElementById('remember_me');
-            const form = document.getElementById('login-form');
-
-            // Autofill saved email (only if Laravel's `old('email')` is empty)
-            try {
-                const saved = localStorage.getItem(REMEMBER_KEY);
-                if (saved && emailInput && !emailInput.value) {
-                    emailInput.value = saved;
-                    if (rememberCheckbox) rememberCheckbox.checked = true;
-                    // Move focus to password when email is already filled
-                    const pw = document.getElementById('password');
-                    if (pw) pw.focus();
-                }
-            } catch (e) { /* ignore storage errors */ }
-
-            // On submit: persist or clear based on checkbox
-            if (form) {
-                form.addEventListener('submit', function () {
-                    try {
-                        if (rememberCheckbox && rememberCheckbox.checked && emailInput.value) {
-                            localStorage.setItem(REMEMBER_KEY, emailInput.value);
-                        } else {
-                            localStorage.removeItem(REMEMBER_KEY);
-                        }
-                    } catch (e) { /* ignore */ }
-                });
-            }
-        })();
 
         // Submit loading state: "Logging in..."
         (function () {

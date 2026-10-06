@@ -20,6 +20,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Blade::directive('cspNonce', function (): string {
+            return "nonce=\"<?php echo e(request()->attributes->get('csp_nonce')); ?>\"";
+        });
+
         $compiler = app('blade.compiler');
 
         /*

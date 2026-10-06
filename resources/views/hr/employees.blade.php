@@ -593,7 +593,7 @@
         </div>
     </div>
 
-    <script>
+    <script @cspNonce>
         const hasValidationErrors = {{ $errors->any() ? 'true' : 'false' }};
         const closers = document.querySelectorAll('[data-close-modal]');
         const modals = document.querySelectorAll('.modal-overlay');

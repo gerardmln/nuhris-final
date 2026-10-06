@@ -7,7 +7,7 @@
     <title>@yield('title', 'Admin Dashboard') | {{ config('app.name', 'NU HRIS') }}</title>
     @include('partials.favicon')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <style>
+    <style @cspNonce>
         @keyframes slideInLeft {
             from { opacity: 0; transform: translateX(-8px); }
             to { opacity: 1; transform: translateX(0); }
@@ -183,7 +183,7 @@
         @include('partials.logout-modal')
     @endauth
 
-    <script>
+    <script @cspNonce>
         (() => {
             const nav = document.getElementById('admin-sidebar-nav');
             if (!nav) return;

@@ -13,6 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
         $middleware->alias([
             'user.type' => \App\Http\Middleware\EnsureUserType::class,
             'privacy.notice' => \App\Http\Middleware\EnsurePrivacyNoticeAcknowledged::class,

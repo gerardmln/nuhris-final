@@ -150,7 +150,7 @@
     </div>
 </div>
 
-<script>
+<script @cspNonce>
     const timekeeperModal = document.getElementById('timekeeper-modal');
     document.getElementById('open-timekeeper-modal').addEventListener('click', () => {
         timekeeperModal.classList.remove('hidden');

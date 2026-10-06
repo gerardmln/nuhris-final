@@ -68,7 +68,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         (() => {
             const modal = document.getElementById('validation-rule-modal');
             document.getElementById('open-validation-rule-modal').addEventListener('click', () => {

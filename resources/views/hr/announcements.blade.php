@@ -337,7 +337,7 @@
         </div>
     </div>
 
-    <script>
+    <script @cspNonce>
         const modalOpeners = document.querySelectorAll('[data-open-modal]');
         const modalClosers = document.querySelectorAll('[data-close-modal]');
         const modalElements = document.querySelectorAll('#new-announcement-modal, #edit-announcement-modal');

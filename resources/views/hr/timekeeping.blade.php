@@ -246,7 +246,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         // Modal logic
         document.querySelectorAll('[data-open-modal]').forEach(btn => {
             btn.addEventListener('click', () => {

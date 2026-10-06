@@ -7,7 +7,7 @@
     <title>@yield('title', 'Employee Portal') | {{ config('app.name', 'NU HRIS') }}</title>
     @include('partials.favicon')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <style>
+    <style @cspNonce>
         @keyframes slideInLeft {
             from { opacity: 0; transform: translateX(-8px); }
             to { opacity: 1; transform: translateX(0); }

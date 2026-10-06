@@ -44,7 +44,7 @@
     </div>
 </div>
 
-<script>
+<script @cspNonce>
     (function () {
         const modal = document.getElementById('logout-modal');
         const card = document.getElementById('logout-modal-card');

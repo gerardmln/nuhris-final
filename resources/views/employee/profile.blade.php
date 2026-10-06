@@ -172,7 +172,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         function togglePassword(inputId, button) {
             const input = document.getElementById(inputId);
             const showIcon = button.querySelector('.eye-show');

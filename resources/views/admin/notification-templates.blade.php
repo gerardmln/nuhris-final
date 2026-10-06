@@ -111,7 +111,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         (() => {
             const tabs = document.querySelectorAll('.template-tab');
             const lists = document.querySelectorAll('.template-list');

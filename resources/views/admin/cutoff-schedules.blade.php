@@ -119,7 +119,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         (() => {
             const datesTab = document.getElementById('cutoff-tab-dates');
             const workTab = document.getElementById('cutoff-tab-work');

@@ -178,7 +178,7 @@
         </article>
     </main>
     @if ($adminView ?? false)
-        <script>
+        <script @cspNonce>
             document.querySelectorAll('.dtr-row-actions-toggle').forEach((toggle) => {
                 toggle.addEventListener('click', () => {
                     const menu = toggle.parentElement.querySelector('.dtr-row-actions-menu');

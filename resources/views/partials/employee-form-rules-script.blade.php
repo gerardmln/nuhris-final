@@ -1,5 +1,5 @@
 {{-- Hostinger-safe employee form cascading rules (does not depend on Vite). --}}
-<script>
+<script @cspNonce>
     (function () {
         if (window.__nuhrisEmployeeFormRulesLoaded) {
             if (typeof window.initializeEmployeeForms === 'function') {

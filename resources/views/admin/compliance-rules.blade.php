@@ -86,7 +86,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         (() => {
             const tabs = document.querySelectorAll('.compliance-tab');
             const panels = document.querySelectorAll('.compliance-panel');

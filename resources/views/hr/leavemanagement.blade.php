@@ -268,7 +268,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         const allModals = document.querySelectorAll('#upload-leaves-modal, #leave-details-modal');
         document.querySelectorAll('[data-open-modal]').forEach(btn => { btn.addEventListener('click', () => { const m = document.getElementById(btn.dataset.openModal); if(m){m.classList.remove('hidden');m.classList.add('flex');document.body.classList.add('overflow-hidden');} }); });
         document.querySelectorAll('[data-close-modal]').forEach(btn => { btn.addEventListener('click', () => { const m = btn.closest('.fixed.inset-0'); if(m){m.classList.add('hidden');m.classList.remove('flex');document.body.classList.remove('overflow-hidden');} }); });

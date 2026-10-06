@@ -335,7 +335,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         document.querySelectorAll('[data-open-modal]').forEach((button) => {
             button.addEventListener('click', () => {
                 const modal = document.getElementById(button.dataset.openModal);

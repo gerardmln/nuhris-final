@@ -98,7 +98,7 @@
 @endsection
 
 @push('scripts')
-    <script>
+    <script @cspNonce>
         (() => {
             const modal = document.getElementById('leave-type-modal');
             document.getElementById('open-leave-type-modal').addEventListener('click', () => {
