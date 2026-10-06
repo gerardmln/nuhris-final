@@ -69,9 +69,7 @@ class User extends Authenticatable
 
     public function visibleAnnouncementNotifications(): HasMany
     {
-        return $this->announcementNotifications()
-            ->visible()
-            ->whereHas('announcement', fn ($query) => $query->notifications());
+        return $this->announcementNotifications()->visible();
     }
 
     public function unreadAnnouncementNotifications(): HasMany

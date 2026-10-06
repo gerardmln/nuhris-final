@@ -37,7 +37,6 @@
             ['label' => 'WFH Submission', 'route' => 'employee.wfh-monitoring.index', 'match' => 'employee.wfh-monitoring*', 'icon' => 'M4 7h16M4 12h16M4 17h10M7 3v18'],
             ['label' => 'Leave Monitoring', 'route' => 'employee.leave', 'match' => 'employee.leave', 'icon' => 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'],
             ['label' => 'Notifications', 'route' => 'employee.notifications', 'match' => 'employee.notifications', 'icon' => 'M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0'],
-            ['label' => 'Announcements', 'route' => 'employee.announcements', 'match' => 'employee.announcements*', 'icon' => 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z'],
             ['label' => 'Profile', 'route' => 'employee.profile', 'match' => 'employee.profile', 'icon' => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'],
             ['label' => 'Download APK', 'href' => 'https://nationalueduph-my.sharepoint.com/:u:/g/personal/malaluangl_students_nu-lipa_edu_ph/IQByWSFnqeYOQ4TG9sIxTMswAXj0JWsK6DIwMyjz9fS4ciE?e=j0eZEP', 'match' => '__never__', 'icon' => 'M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 4v10m0 0l-4-4m4 4l4-4'],
         ];

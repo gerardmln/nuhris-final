@@ -38,8 +38,8 @@
         <div class="xl:col-span-2">
             <article class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm">
                 <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-2xl font-bold text-slate-800">Announcements</h3>
-                    <a href="{{ route('employee.announcements') }}" class="text-sm font-semibold text-blue-800 hover:underline">View All</a>
+                    <h3 class="text-2xl font-bold text-slate-800">Notifications</h3>
+                    <a href="{{ route('employee.notifications') }}" class="text-sm font-semibold text-blue-800 hover:underline">View All</a>
                 </div>
                 <div class="space-y-3">
                     @forelse ($recentAnnouncements as $alert)
@@ -48,7 +48,7 @@
                             $priorityLabel = $announcement?->priority_label ?? 'Medium';
                             $priorityBadgeClass = $announcement?->priority_badge_class ?? 'bg-blue-100 text-blue-700';
                         @endphp
-                        <a href="{{ route('employee.announcements.open', $alert) }}" class="block rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 transition hover:border-slate-300 hover:bg-slate-100">
+                        <a href="{{ route('employee.notifications.open', $alert) }}" class="block rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 transition hover:border-slate-300 hover:bg-slate-100">
                             <div class="mb-2 flex items-start justify-between gap-2">
                                 <p class="text-sm font-semibold">{{ $alert->title_text }}</p>
                                 <div class="flex items-center gap-2">
@@ -62,8 +62,8 @@
                         </a>
                     @empty
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-                            <p class="text-sm font-semibold">No announcements yet</p>
-                            <p class="text-xs text-slate-500">HR has not posted any announcements for you.</p>
+                            <p class="text-sm font-semibold">No notifications yet</p>
+                            <p class="text-xs text-slate-500">There are no HR updates for you at this time.</p>
                         </div>
                     @endforelse
                 </div>

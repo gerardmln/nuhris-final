@@ -1,7 +1,7 @@
 @extends('employee.layout')
 
-@section('title', 'Notification')
-@section('page_title', 'Notification')
+@section('title', 'Notifications')
+@section('page_title', 'Notifications')
 
 @section('content')
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

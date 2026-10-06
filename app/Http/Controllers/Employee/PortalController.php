@@ -42,7 +42,6 @@ class PortalController extends Controller
 
         $recentAnnouncements = AnnouncementNotification::query()
             ->visible()
-            ->whereHas('announcement', fn ($query) => $query->announcements())
             ->with('announcement')
             ->where('user_id', $user->id)
             ->latest()

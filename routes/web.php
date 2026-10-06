@@ -159,17 +159,6 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
     });
 
     Route::get('/dashboard', [EmployeePortalController::class, 'dashboard'])->name('dashboard');
-    Route::get('/announcements', [EmployeePortalController::class, 'announcements'])->name('announcements');
-    Route::get('/announcements/{notification}/open', function (Request $request, AnnouncementNotification $notification) {
-        abort_unless(
-            $notification->user_id === $request->user()?->id
-                && $notification->announcement?->type === \App\Models\Announcement::TYPE_ANNOUNCEMENT,
-            403
-        );
-
-        return redirect()->route('employee.announcements');
-    })->name('announcements.open');
-
     Route::get('/attendance-dtr', [EmployeePortalController::class, 'attendance'])->name('attendance');
     Route::post('/attendance-dtr/schedule', [EmployeePortalController::class, 'storeSchedule'])->name('attendance.schedule.store');
 
@@ -183,7 +172,6 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
     Route::get('/notifications', function () {
         $notifications = AnnouncementNotification::query()
             ->visible()
-            ->whereHas('announcement', fn ($query) => $query->notifications())
             ->with('announcement')
             ->where('user_id', Auth::id())
             ->latest()
@@ -196,7 +184,7 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
 
     Route::delete('/notifications/clear-all', function (Request $request) {
         $deleted = AnnouncementNotification::query()
-            ->whereHas('announcement', fn ($query) => $query->notifications())
+            ->visible()
             ->where('user_id', $request->user()?->id)
             ->delete();
 
@@ -206,7 +194,6 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
     Route::post('/notifications/read-all', function (Request $request) {
         $updated = AnnouncementNotification::query()
             ->visible()
-            ->whereHas('announcement', fn ($query) => $query->notifications())
             ->where('user_id', $request->user()?->id)
             ->where('is_read', false)
             ->update([
@@ -220,7 +207,7 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
     Route::get('/notifications/{notification}/open', function (Request $request, AnnouncementNotification $notification) {
         abort_unless(
             $notification->user_id === $request->user()?->id
-                && $notification->announcement?->type === \App\Models\Announcement::TYPE_NOTIFICATION,
+                && $notification->announcement?->type,
             403
         );
 
