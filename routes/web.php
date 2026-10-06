@@ -83,6 +83,7 @@ Route::prefix('hr')->middleware(['auth', 'user.type:2', 'privacy.notice'])->grou
 
     Route::delete('/announcements/clear-all', function (Request $request) {
         $cleared = \App\Models\Announcement::query()
+            ->announcements()
             ->where(function ($query) {
                 $query->whereNull('target_employee_type')
                     ->orWhereIn('target_employee_type', ['faculty', 'admin_support']);
@@ -99,6 +100,7 @@ Route::prefix('hr')->middleware(['auth', 'user.type:2', 'privacy.notice'])->grou
     Route::get('/notifications', function () {
         $notifications = AnnouncementNotification::query()
             ->visible()
+            ->whereHas('announcement', fn ($query) => $query->notifications())
             ->with('announcement')
             ->where('user_id', Auth::id())
             ->latest()
@@ -111,6 +113,7 @@ Route::prefix('hr')->middleware(['auth', 'user.type:2', 'privacy.notice'])->grou
 
     Route::delete('/notifications/clear-all', function (Request $request) {
         $deleted = AnnouncementNotification::query()
+            ->whereHas('announcement', fn ($query) => $query->notifications())
             ->where('user_id', $request->user()?->id)
             ->delete();
 
@@ -120,6 +123,7 @@ Route::prefix('hr')->middleware(['auth', 'user.type:2', 'privacy.notice'])->grou
     Route::post('/notifications/read-all', function (Request $request) {
         $updated = AnnouncementNotification::query()
             ->visible()
+            ->whereHas('announcement', fn ($query) => $query->notifications())
             ->where('user_id', $request->user()?->id)
             ->where('is_read', false)
             ->update([
@@ -131,7 +135,11 @@ Route::prefix('hr')->middleware(['auth', 'user.type:2', 'privacy.notice'])->grou
     })->name('notifications.read-all');
 
     Route::get('/notifications/{notification}/open', function (Request $request, AnnouncementNotification $notification) {
-        abort_unless($notification->user_id === $request->user()?->id, 403);
+        abort_unless(
+            $notification->user_id === $request->user()?->id
+                && $notification->announcement?->type === \App\Models\Announcement::TYPE_NOTIFICATION,
+            403
+        );
 
         if (! $notification->is_read) {
             $notification->forceFill([
@@ -151,6 +159,16 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
     });
 
     Route::get('/dashboard', [EmployeePortalController::class, 'dashboard'])->name('dashboard');
+    Route::get('/announcements', [EmployeePortalController::class, 'announcements'])->name('announcements');
+    Route::get('/announcements/{notification}/open', function (Request $request, AnnouncementNotification $notification) {
+        abort_unless(
+            $notification->user_id === $request->user()?->id
+                && $notification->announcement?->type === \App\Models\Announcement::TYPE_ANNOUNCEMENT,
+            403
+        );
+
+        return redirect()->route('employee.announcements');
+    })->name('announcements.open');
 
     Route::get('/attendance-dtr', [EmployeePortalController::class, 'attendance'])->name('attendance');
     Route::post('/attendance-dtr/schedule', [EmployeePortalController::class, 'storeSchedule'])->name('attendance.schedule.store');
@@ -165,6 +183,7 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
     Route::get('/notifications', function () {
         $notifications = AnnouncementNotification::query()
             ->visible()
+            ->whereHas('announcement', fn ($query) => $query->notifications())
             ->with('announcement')
             ->where('user_id', Auth::id())
             ->latest()
@@ -177,6 +196,7 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
 
     Route::delete('/notifications/clear-all', function (Request $request) {
         $deleted = AnnouncementNotification::query()
+            ->whereHas('announcement', fn ($query) => $query->notifications())
             ->where('user_id', $request->user()?->id)
             ->delete();
 
@@ -186,6 +206,7 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
     Route::post('/notifications/read-all', function (Request $request) {
         $updated = AnnouncementNotification::query()
             ->visible()
+            ->whereHas('announcement', fn ($query) => $query->notifications())
             ->where('user_id', $request->user()?->id)
             ->where('is_read', false)
             ->update([
@@ -197,7 +218,11 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
     })->name('notifications.read-all');
 
     Route::get('/notifications/{notification}/open', function (Request $request, AnnouncementNotification $notification) {
-        abort_unless($notification->user_id === $request->user()?->id, 403);
+        abort_unless(
+            $notification->user_id === $request->user()?->id
+                && $notification->announcement?->type === \App\Models\Announcement::TYPE_NOTIFICATION,
+            403
+        );
 
         if (! $notification->is_read) {
             $notification->forceFill([
@@ -227,6 +252,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
     Route::get('/notifications', function () {
         $notifications = AnnouncementNotification::query()
             ->visible()
+            ->whereHas('announcement', fn ($query) => $query->notifications())
             ->with('announcement')
             ->where('user_id', Auth::id())
             ->latest()
@@ -239,6 +265,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
 
     Route::delete('/notifications/clear-all', function (Request $request) {
         $deleted = AnnouncementNotification::query()
+            ->whereHas('announcement', fn ($query) => $query->notifications())
             ->where('user_id', $request->user()?->id)
             ->delete();
 
@@ -248,6 +275,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
     Route::post('/notifications/read-all', function (Request $request) {
         $updated = AnnouncementNotification::query()
             ->visible()
+            ->whereHas('announcement', fn ($query) => $query->notifications())
             ->where('user_id', $request->user()?->id)
             ->where('is_read', false)
             ->update([
@@ -259,7 +287,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
     })->name('notifications.read-all');
 
     Route::get('/notifications/{notification}/open', function (Request $request, AnnouncementNotification $notification) {
-        abort_unless($notification->user_id === $request->user()?->id, 403);
+        abort_unless(
+            $notification->user_id === $request->user()?->id
+                && $notification->announcement?->type === \App\Models\Announcement::TYPE_NOTIFICATION,
+            403
+        );
 
         if (! $notification->is_read) {
             $notification->forceFill([

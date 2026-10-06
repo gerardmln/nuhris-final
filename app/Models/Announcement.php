@@ -13,9 +13,13 @@ class Announcement extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const TYPE_ANNOUNCEMENT = 'announcement';
+    public const TYPE_NOTIFICATION = 'notification';
+
     protected $fillable = [
         'title',
         'content',
+        'type',
         'priority',
         'target_employee_type',
         'target_user_id',
@@ -47,6 +51,16 @@ class Announcement extends Model
                     ->orWhere('published_at', '<=', now());
             })
             ->whereNull('deleted_at');
+    }
+
+    public function scopeAnnouncements($query)
+    {
+        return $query->where('type', self::TYPE_ANNOUNCEMENT);
+    }
+
+    public function scopeNotifications($query)
+    {
+        return $query->where('type', self::TYPE_NOTIFICATION);
     }
 
     public function creator(): BelongsTo

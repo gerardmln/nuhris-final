@@ -34,6 +34,7 @@ class DashboardController extends Controller
         $unreadNotificationsCount = Auth::check()
             ? AnnouncementNotification::query()
                 ->visible()
+                ->whereHas('announcement', fn ($query) => $query->notifications())
                 ->where('user_id', Auth::id())
                 ->where('is_read', false)
                 ->count()
@@ -46,6 +47,7 @@ class DashboardController extends Controller
         $daysUntilCutoff = max($today->diffInDays($nextCutoffDate, false), 0);
 
         $announcementsCreatedThisMonth = Announcement::query()
+            ->announcements()
             ->where('created_by', Auth::id())
             ->whereBetween('created_at', [$today->copy()->startOfMonth(), $today->copy()->endOfMonth()])
             ->count();
@@ -70,7 +72,7 @@ class DashboardController extends Controller
             [
                 'title' => 'Unread Notifications',
                 'count' => $unreadNotificationsCount,
-                'description' => 'Announcements and HR notices you have not opened yet.',
+                'description' => 'Notifications and HR notices you have not opened yet.',
                 'href' => route('notifications.index'),
                 'tone' => 'slate',
                 'empty_label' => 'No unread notifications',
@@ -117,6 +119,7 @@ class DashboardController extends Controller
 
         // Get latest announcements
         $announcements = Announcement::where('is_published', true)
+            ->announcements()
             ->whereDate('published_at', '<=', now())
             ->where(function ($query) {
                 $query->whereNull('target_employee_type')

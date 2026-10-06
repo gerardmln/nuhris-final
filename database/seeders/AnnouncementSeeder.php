@@ -16,6 +16,7 @@ class AnnouncementSeeder extends Seeder
             [
                 'title' => 'System Maintenance Scheduled',
                 'content' => 'The HR system will be under maintenance on March 31st from 2 PM to 4 PM. Please plan accordingly.',
+                'type' => Announcement::TYPE_ANNOUNCEMENT,
                 'priority' => 'high',
                 'target_user_type' => null,
                 'is_published' => true,
@@ -26,6 +27,7 @@ class AnnouncementSeeder extends Seeder
             [
                 'title' => 'New Leave Policy Effective April 1',
                 'content' => 'Please review the updated leave policy that goes into effect on April 1st. Key changes include extended vacation time.',
+                'type' => Announcement::TYPE_ANNOUNCEMENT,
                 'priority' => 'medium',
                 'target_user_type' => null,
                 'is_published' => true,
@@ -36,6 +38,7 @@ class AnnouncementSeeder extends Seeder
             [
                 'title' => 'Employee Recognition Program',
                 'content' => 'Nominations are now open for our quarterly employee recognition program. Recognize outstanding colleagues!',
+                'type' => Announcement::TYPE_ANNOUNCEMENT,
                 'priority' => 'low',
                 'target_user_type' => null,
                 'is_published' => true,

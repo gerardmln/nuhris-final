@@ -40,14 +40,9 @@ class PortalController extends Controller
         $user = $request->user();
         $employee = Employee::query()->with('department')->where('email', $user->email)->first();
 
-        $notificationsCount = AnnouncementNotification::query()
+        $recentAnnouncements = AnnouncementNotification::query()
             ->visible()
-            ->where('user_id', $user->id)
-            ->where('is_read', false)
-            ->count();
-
-        $recentAlerts = AnnouncementNotification::query()
-            ->visible()
+            ->whereHas('announcement', fn ($query) => $query->announcements())
             ->with('announcement')
             ->where('user_id', $user->id)
             ->latest()
@@ -144,14 +139,14 @@ class PortalController extends Controller
         return view('employee.dashboard', [
             'employee' => $employee,
             'stats' => [
-                'notifications' => $notificationsCount,
+                'announcements' => $recentAnnouncements->count(),
             ],
             'presentDays' => [
                 'first_cutoff' => $presentDaysFirstCutoff,
                 'second_cutoff' => $presentDaysSecondCutoff,
             ],
             'latestApprovedSchedule' => $latestApprovedSchedule,
-            'recentAlerts' => $recentAlerts,
+            'recentAnnouncements' => $recentAnnouncements,
             'calendar' => [
                 'month_label' => now()->format('F Y'),
                 'today' => (int) now()->format('j'),
@@ -160,6 +155,19 @@ class PortalController extends Controller
             ],
             'academicCalendarEntries' => $academicCalendarPayload,
         ]);
+    }
+
+    public function announcements(Request $request): View
+    {
+        $announcements = AnnouncementNotification::query()
+            ->visible()
+            ->whereHas('announcement', fn ($query) => $query->announcements())
+            ->with('announcement')
+            ->where('user_id', $request->user()->id)
+            ->latest()
+            ->get();
+
+        return view('employee.announcements', compact('announcements'));
     }
 
     public function credentials(Request $request): View

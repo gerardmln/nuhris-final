@@ -25,6 +25,7 @@ class AnnouncementController extends Controller
         $facultyRankings = array_values(config('hris.faculty_rankings', []));
 
         $officialAnnouncementsQuery = Announcement::query()
+            ->announcements()
             ->where(function ($query) {
                 $query->whereNull('target_employee_type')
                     ->orWhereIn('target_employee_type', ['faculty', 'admin_support']);
@@ -91,6 +92,7 @@ class AnnouncementController extends Controller
 
             $announcement = Announcement::create([
                 ...$data,
+                'type' => Announcement::TYPE_ANNOUNCEMENT,
                 'is_published' => true,
                 'created_by' => $request->user()->id,
                 'published_at' => now(),
