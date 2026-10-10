@@ -34,9 +34,7 @@
             <div class="relative z-10 flex flex-col justify-between p-12 text-white w-full">
                 <div>
                     <div class="flex items-center gap-3">
-                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#ffdc00]">
-                            <span class="text-lg font-extrabold text-[#00386f]">NU</span>
-                        </div>
+                        <img src="{{ asset('images/nu-logo.svg') }}" alt="NU HRIS" class="h-12 w-12 rounded-xl">
                         <div>
                             <p class="text-xl font-extrabold tracking-wide leading-none">NU HRIS</p>
                             <p class="text-xs text-blue-200 tracking-widest uppercase">Human Resource Information System</p>
@@ -45,21 +43,7 @@
                 </div>
                 <div class="max-w-lg">
                     <h1 class="text-5xl font-extrabold leading-tight mb-4">Empowering your<br>workforce management</h1>
-                    <p class="text-lg text-blue-100/90 leading-relaxed">Streamline employee records, attendance tracking, leave management, and credential monitoring all in one place.</p>
-                </div>
-                <div class="flex items-center gap-8 text-sm text-blue-200">
-                    <div class="flex items-center gap-2">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
-                        Attendance Tracking
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
-                        Leave Management
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
-                        Credential Monitoring
-                    </div>
+                    <p class="text-lg text-blue-100/90 leading-relaxed">Streamline employee records, attendance tracking, and leave management all in one place.</p>
                 </div>
             </div>
         </div>
@@ -68,9 +52,7 @@
         <div class="flex w-full flex-col justify-center px-6 lg:w-[45%] lg:px-16 xl:px-24 bg-[#f8f9fb]">
             {{-- Mobile logo --}}
             <div class="mb-8 flex items-center gap-3 lg:hidden">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[#00386f]">
-                    <span class="text-sm font-extrabold text-[#ffdc00]">NU</span>
-                </div>
+                <img src="{{ asset('images/nu-logo.svg') }}" alt="NU HRIS" class="h-10 w-10 rounded-lg">
                 <p class="text-lg font-extrabold text-[#00386f]">NU HRIS</p>
             </div>
 

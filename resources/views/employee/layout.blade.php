@@ -47,7 +47,7 @@
             {{-- Logo --}}
             <div class="border-b border-white/10 px-6 py-6">
                 <div class="flex items-center gap-3">
-                    <div class="grid h-11 w-11 place-content-center rounded-xl bg-yellow-400 text-base font-black text-blue-950 shadow-lg shadow-yellow-400/20">N</div>
+                    <img src="{{ asset('images/nu-logo.svg') }}" alt="NU HRIS" class="h-11 w-11 rounded-xl">
                     <div>
                         <p class="text-xl font-extrabold leading-none tracking-wide">NU Lipa</p>
                         <p class="mt-1 text-[11px] font-medium uppercase tracking-[0.15em] text-blue-200">HRIS Self-Service</p>
