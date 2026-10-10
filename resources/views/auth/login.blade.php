@@ -34,7 +34,7 @@
             <div class="relative z-10 flex flex-col justify-between p-12 text-white w-full">
                 <div>
                     <div class="flex items-center gap-3">
-                        <img src="{{ asset('images/nu-logo.svg') }}" alt="NU HRIS" class="h-12 w-12 rounded-xl">
+                        <x-nu-logo class="h-12 w-12 rounded-xl" />
                         <div>
                             <p class="text-xl font-extrabold tracking-wide leading-none">NU HRIS</p>
                             <p class="text-xs text-blue-200 tracking-widest uppercase">Human Resource Information System</p>
@@ -52,7 +52,7 @@
         <div class="flex w-full flex-col justify-center px-6 lg:w-[45%] lg:px-16 xl:px-24 bg-[#f8f9fb]">
             {{-- Mobile logo --}}
             <div class="mb-8 flex items-center gap-3 lg:hidden">
-                <img src="{{ asset('images/nu-logo.svg') }}" alt="NU HRIS" class="h-10 w-10 rounded-lg">
+                <x-nu-logo class="h-10 w-10 rounded-lg" />
                 <p class="text-lg font-extrabold text-[#00386f]">NU HRIS</p>
             </div>
 
