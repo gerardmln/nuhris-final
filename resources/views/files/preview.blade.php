@@ -5,8 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Preview {{ $filename }}</title>
     @vite(['resources/css/app.css'])
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+        }
+
+        .file-preview-page {
+            display: flex;
+            min-height: 100dvh;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .file-preview-main {
+            display: flex;
+            min-height: 0;
+            flex: 1 1 auto;
+            padding: 0.75rem;
+        }
+
+        .file-preview-frame {
+            display: block;
+            min-height: 0;
+            width: 100%;
+            flex: 1 1 auto;
+        }
+
+        @media (min-width: 640px) {
+            .file-preview-main {
+                padding: 1.25rem;
+            }
+        }
+    </style>
 </head>
-<body class="min-h-screen bg-slate-100 text-slate-900">
+<body class="file-preview-page bg-slate-100 text-slate-900">
     @php
         $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         $officeExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
@@ -26,11 +60,11 @@
         </a>
     </header>
 
-    <main class="h-[calc(100vh-81px)] p-3 sm:p-5">
+    <main class="file-preview-main">
         <iframe
             src="{{ $viewerUrl }}"
             title="Preview of {{ $filename }}"
-            class="h-full w-full rounded-xl border border-slate-300 bg-white shadow-sm"
+            class="file-preview-frame rounded-xl border border-slate-300 bg-white shadow-sm"
             allow="fullscreen"
         ></iframe>
     </main>
