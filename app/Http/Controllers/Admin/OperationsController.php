@@ -187,6 +187,10 @@ class OperationsController extends Controller
             return back()->with('error', 'Unable to generate a download link. Please try again.');
         }
 
+        if (strtolower(pathinfo($credential->original_filename ?: $credential->file_path, PATHINFO_EXTENSION)) === 'pdf') {
+            return redirect()->away($url);
+        }
+
         $this->logAudit('VIEW', 'Credentials', 'Viewed credential file for '.$employeeName.'.', 'Success', [
             'credential_id' => $credential->id,
             'title' => $credential->title,
@@ -1316,6 +1320,10 @@ class OperationsController extends Controller
             ]);
 
             return back()->with('error', 'Unable to generate a download link. Please try again.');
+        }
+
+        if (strtolower(pathinfo($submission->original_filename ?: $submission->file_path, PATHINFO_EXTENSION)) === 'pdf') {
+            return redirect()->away($url);
         }
 
         $this->logAudit('VIEW', 'WFH Monitoring', 'Viewed WFH file for '.$employeeName.'.', 'Success', [

@@ -14,28 +14,36 @@
 
         .file-preview-page {
             display: flex;
+            height: 100dvh;
             min-height: 100dvh;
             flex-direction: column;
             overflow: hidden;
         }
 
         .file-preview-main {
-            display: flex;
+            position: relative;
             min-height: 0;
-            flex: 1 1 auto;
-            padding: 0.75rem;
+            flex: 1 1 0%;
+            overflow: hidden;
+            padding: 0;
         }
 
         .file-preview-frame {
+            position: absolute;
+            inset: 0;
             display: block;
+            height: auto;
             min-height: 0;
-            width: 100%;
-            flex: 1 1 auto;
+            width: auto;
+            min-width: 0;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
         }
 
         @media (min-width: 640px) {
-            .file-preview-main {
-                padding: 1.25rem;
+            .file-preview-frame {
+                inset: 0;
             }
         }
     </style>
@@ -47,15 +55,15 @@
         $isOfficeFile = in_array($extension, $officeExtensions, true);
         $viewerUrl = $isOfficeFile
             ? 'https://view.officeapps.live.com/op/embed.aspx?src='.urlencode($url)
-            : $url;
+            : $url.(str_contains($url, '#') ? '&' : '#').'view=FitH&zoom=page-width';
     @endphp
 
-    <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4 shadow-sm">
+    <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2 shadow-sm">
         <div class="min-w-0">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Online file preview</p>
-            <h1 class="truncate text-lg font-bold" title="{{ $filename }}">{{ $filename }}</h1>
+            <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Online file preview</p>
+            <h1 class="truncate text-sm font-bold" title="{{ $filename }}">{{ $filename }}</h1>
         </div>
-        <a href="{{ $url }}" download="{{ $filename }}" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
+        <a href="{{ $url }}" download="{{ $filename }}" class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700">
             Download
         </a>
     </header>

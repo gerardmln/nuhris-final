@@ -31,4 +31,7 @@
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" "expr=%{HTTPS} == 'on'"
+    <FilesMatch "\.(?:avif|gif|jpe?g|png|svg|webp|ico)$">
+        Header always unset Access-Control-Allow-Origin
+    </FilesMatch>
 </IfModule>

@@ -49,7 +49,7 @@
                         @if ($degree)
                             <p class="mt-3 truncate text-sm text-slate-600" title="{{ $degree->original_filename }}">{{ $degree->original_filename }}</p>
                             <p class="mt-1 text-xs text-slate-500">Status: {{ ucfirst($degree->status) }}</p>
-                            <a href="{{ route('employees.degrees.view', $degree) }}" class="mt-3 inline-flex rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50">View PDF</a>
+                            <a href="{{ route('employees.degrees.view', $degree) }}" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50">View PDF</a>
                             @if ($degree->status === 'pending')
                                 <div class="mt-4 flex flex-wrap gap-2">
                                     <form method="POST" action="{{ route('employees.degrees.approve', $degree) }}">

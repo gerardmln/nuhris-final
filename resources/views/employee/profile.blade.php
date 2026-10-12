@@ -87,7 +87,7 @@
                             <p class="mt-2 text-xs text-slate-600">HR note: {{ $degree->review_notes }}</p>
                         @endif
                         <div class="mt-4 flex flex-wrap gap-2">
-                            <a href="{{ route('employee.profile.degrees.view', $degree) }}" class="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50">View PDF</a>
+                            <a href="{{ route('employee.profile.degrees.view', $degree) }}" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50">View PDF</a>
                             <form method="POST" action="{{ route('employee.profile.degrees.destroy', $degree) }}" onsubmit="return confirm('Delete this degree submission so you can upload a new file?');">
                                 @csrf
                                 @method('DELETE')

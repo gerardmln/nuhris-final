@@ -29,7 +29,7 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect('/hr');
+        $response->assertRedirect('/privacy-notice');
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void

@@ -183,6 +183,10 @@ class OperationsController extends Controller
             return back()->with('error', 'Unable to generate a download link. Please try again.');
         }
 
+        if (strtolower(pathinfo($credential->original_filename ?: $credential->file_path, PATHINFO_EXTENSION)) === 'pdf') {
+            return redirect()->away($url);
+        }
+
         return view('files.preview', [
             'url' => $url,
             'filename' => $credential->original_filename ?: basename($credential->file_path),
