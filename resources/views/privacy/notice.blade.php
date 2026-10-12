@@ -9,7 +9,17 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-[#eceef1] text-slate-900 antialiased">
-    <main class="mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-6 sm:px-6 lg:px-8">
+    <style>
+        .privacy-notice ul {
+            padding-left: 1.5rem;
+            margin-left: 0.25rem;
+        }
+
+        .privacy-notice li {
+            margin-left: 0.25rem;
+        }
+    </style>
+    <main class="privacy-notice mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-6 sm:px-6 lg:px-8">
         <section class="flex max-h-[calc(100vh-3rem)] w-full flex-col overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-xl">
             <header class="shrink-0 border-b border-slate-200 bg-[#00386f] px-5 py-5 text-white sm:px-8">
                 <div class="flex flex-wrap items-start justify-between gap-4">
