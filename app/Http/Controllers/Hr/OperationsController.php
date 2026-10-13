@@ -864,7 +864,7 @@ class OperationsController extends Controller
             $records = $this->parseBiometricText($text);
 
             if (empty($records)) {
-                return back()->with('error', 'No attendance rows were detected in the PDF. Make sure you uploaded a biometric "Timesheet Report" and not a different document.');
+                return back()->with('error', 'No attendance rows were detected in the PDF. Upload a supported biometric Timesheet Report or Civil Service Form 48 Daily Time Record.');
             }
 
             // ------------------------------------------------------------------
@@ -1718,7 +1718,11 @@ class OperationsController extends Controller
         $lines = array_filter($lines, fn($l) => $l !== '');
         $lines = array_values($lines);
 
-        $records = $this->parseNuLipaFormat($lines);
+        $records = $this->parseCivilServiceDtrFormat($lines);
+
+        if (empty($records)) {
+            $records = $this->parseNuLipaFormat($lines);
+        }
 
         if (empty($records)) {
             $records = $this->parseTabularFormat($lines);
@@ -1730,6 +1734,81 @@ class OperationsController extends Controller
 
         if (empty($records)) {
             $records = $this->parseGenericFormat($text);
+        }
+
+        return $records;
+    }
+
+    /**
+     * Parse Civil Service Form No. 48 / Daily Time Record exports.
+     *
+     * These PDFs identify an employee in the page header and use only the
+     * day number in each attendance row, so the month and year come from the
+     * "For the month of" header.
+     */
+    private function parseCivilServiceDtrFormat(array $lines): array
+    {
+        $records = [];
+        $employeeName = null;
+        $nameCandidate = null;
+        $month = null;
+        $year = null;
+        $seen = [];
+
+        foreach ($lines as $line) {
+            if (preg_match('/^[A-Za-z][A-Za-z\' .-]+,\s*[A-Za-z][A-Za-z\' .-]+$/', $line)) {
+                $nameCandidate = $line;
+            }
+
+            if (strcasecmp($line, 'For the month of') === 0) {
+                $employeeName = $nameCandidate;
+                continue;
+            }
+
+            if (preg_match('/^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})$/i', $line, $matches)) {
+                $month = Carbon::parse($matches[1])->month;
+                $year = (int) $matches[2];
+                continue;
+            }
+
+            if (! $employeeName || ! $month || ! $year) {
+                continue;
+            }
+
+            if (! preg_match('/(?:am|pm)\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)\s*)*([1-9]|[12]\d|3[01])(?:\s|$)/i', $line, $dayMatch, PREG_OFFSET_CAPTURE)) {
+                continue;
+            }
+
+            $day = (int) $dayMatch[1][0];
+            $rowPrefix = substr($line, 0, (int) $dayMatch[1][1]);
+            preg_match_all('/\d{1,2}:\d{2}\s*(?:am|pm)/i', $rowPrefix, $timeMatches);
+
+            if (empty($timeMatches[0])) {
+                continue;
+            }
+
+            try {
+                $date = Carbon::createFromDate($year, $month, $day)->toDateString();
+            } catch (\Throwable) {
+                continue;
+            }
+
+            $times = $timeMatches[0];
+            usort($times, fn (string $a, string $b): int => strtotime($this->normalizeTime($a)) <=> strtotime($this->normalizeTime($b)));
+            $key = $employeeName.'|'.$date;
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $records[] = [
+                'employee_id' => '',
+                'name' => $employeeName,
+                'date' => $date,
+                'time_in' => $this->normalizeTime($times[0]),
+                'time_out' => count($times) > 1 ? $this->normalizeTime(end($times)) : null,
+            ];
         }
 
         return $records;
