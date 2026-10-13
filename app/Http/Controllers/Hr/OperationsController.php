@@ -1364,6 +1364,13 @@ class OperationsController extends Controller
         }
         $message .= '.';
 
+        app(\App\Services\AuditLogService::class)->record('CREATE', 'Leave Management', $message, 'Success', [
+            'original_filename' => $file->getClientOriginalName(),
+            'imported' => $imported,
+            'updated' => $updated,
+            'skipped' => $skipped,
+        ]);
+
         return back()
             ->with('success', $message)
             ->with('unmatched_employees', array_keys($unmatched))

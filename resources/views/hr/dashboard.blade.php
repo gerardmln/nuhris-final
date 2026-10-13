@@ -119,6 +119,26 @@
                             </div>
                         </article>
 
+                        <article class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
+                            <div class="mb-3 flex items-center justify-between gap-3">
+                                <h3 class="text-2xl font-bold text-slate-800">Announcements</h3>
+                                <a href="{{ route('announcements.index') }}" class="shrink-0 text-sm font-semibold text-blue-700 hover:underline">View all</a>
+                            </div>
+
+                            <div class="space-y-3">
+                                @forelse($announcements as $announcement)
+                                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                        <p class="truncate text-sm font-semibold text-slate-800">{{ $announcement->title }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">{{ $announcement->published_at->format('M d, Y') }}</p>
+                                    </div>
+                                @empty
+                                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-4 text-center">
+                                        <p class="text-sm text-slate-500">No announcements yet</p>
+                                    </div>
+                                @endforelse
+                            </div>
+                        </article>
+
                     </div>
 
                     <div class="space-y-4">
@@ -157,26 +177,6 @@
 
                     </div>
                 </div>
-
-                <article class="rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
-                    <div class="mb-2 flex items-center justify-between">
-                        <h3 class="text-2xl font-bold text-slate-800">Announcements</h3>
-                        <a href="{{ route('announcements.index') }}" class="text-sm font-semibold text-blue-700 hover:underline">View all</a>
-                    </div>
-
-                    <div class="space-y-3">
-                        @forelse($announcements as $announcement)
-                            <div class="rounded-lg border border-slate-200 px-3 py-2">
-                                <p class="text-sm font-semibold">{{ $announcement->title }}</p>
-                                <p class="text-xs text-slate-500">{{ $announcement->published_at->format('M d, Y') }}</p>
-                            </div>
-                        @empty
-                            <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-4 text-center">
-                                <p class="text-sm text-slate-500">No announcements yet</p>
-                            </div>
-                        @endforelse
-                    </div>
-                </article>
 
                 <div class="h-8"></div>
             </section>
