@@ -222,6 +222,7 @@ Route::prefix('employee')->name('employee.')->middleware(['auth', 'user.type:3',
     })->name('notifications.open');
 
     Route::get('/profile', [EmployeePortalController::class, 'profile'])->name('profile');
+    Route::patch('/profile', [EmployeePortalController::class, 'updateProfile'])->name('profile.update');
 
     Route::post('/profile/degrees', [EmployeePortalController::class, 'storeDegree'])->name('profile.degrees.store');
     Route::get('/profile/degrees/{credential}/view', [EmployeePortalController::class, 'viewCredentialFile'])->whereNumber('credential')->name('profile.degrees.view');

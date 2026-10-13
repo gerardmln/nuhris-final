@@ -25,6 +25,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class PortalController extends Controller
@@ -718,6 +719,71 @@ class PortalController extends Controller
             'employeeTypes' => ['Faculty', 'ASP'],
             'degrees' => $employee?->credentials ?? collect(),
         ]);
+    }
+
+    public function updateProfile(Request $request, SupabaseAuthSyncService $authSync): RedirectResponse
+    {
+        $user = $request->user();
+        $employee = Employee::query()->where('email', $user->email)->firstOrFail();
+        $oldName = $employee->full_name;
+        $oldEmail = $employee->email;
+
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('employees', 'email')->ignore($employee->id), Rule::unique('users', 'email')->ignore($user->id)],
+        ]);
+
+        DB::transaction(function () use ($employee, $user, $validated, $authSync, $request, $oldName, $oldEmail): void {
+            $employee->update($validated);
+            $user->forceFill([
+                'name' => $employee->full_name,
+                'email' => $employee->email,
+            ])->save();
+            $authSync->syncUser($user, null);
+
+            $changedFields = [];
+            if ($oldName !== $employee->full_name) {
+                $changedFields[] = 'name: '.$oldName.' → '.$employee->full_name;
+            }
+            if ($oldEmail !== $employee->email) {
+                $changedFields[] = 'email: '.$oldEmail.' → '.$employee->email;
+            }
+
+            if ($changedFields === []) {
+                return;
+            }
+
+            $announcement = Announcement::forceCreate([
+                'title' => 'Employee Profile Updated',
+                'content' => $employee->full_name.' updated their profile: '.implode('; ', $changedFields).'.',
+                'type' => Announcement::TYPE_NOTIFICATION,
+                'priority' => 'medium',
+                'target_user_type' => User::TYPE_HR,
+                'is_published' => true,
+                'published_at' => now(),
+                'created_by' => $user->id,
+            ]);
+
+            $rows = User::query()
+                ->where('user_type', User::TYPE_HR)
+                ->pluck('id')
+                ->map(fn ($userId) => [
+                    'announcement_id' => $announcement->id,
+                    'user_id' => $userId,
+                    'is_read' => false,
+                    'read_at' => null,
+                    'redirect_url' => route('employees.index'),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ])->all();
+
+            if ($rows !== []) {
+                AnnouncementNotification::insert($rows);
+            }
+        });
+
+        return redirect()->route('employee.profile')->with('success', 'Your profile was updated successfully. HR has been notified.');
     }
 
     public function storeDegree(StoreDegreeSubmissionRequest $request, SupabaseStorageService $storage): RedirectResponse

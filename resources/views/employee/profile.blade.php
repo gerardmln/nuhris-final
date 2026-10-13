@@ -26,6 +26,55 @@
     </article>
 
     <article class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm">
+        <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+                <h2 class="text-3xl font-bold text-slate-900">Personal Information</h2>
+                <p class="mt-1 text-sm text-slate-500">You may update only your name and email address. HR will be notified of any changes.</p>
+            </div>
+            <button type="button" id="edit-personal-information" class="rounded-lg border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">Edit</button>
+        </div>
+
+        <form id="personal-information-form" class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2" method="POST" action="{{ route('employee.profile.update') }}">
+            @csrf
+            @method('PATCH')
+            <div>
+                <label for="profile_first_name" class="mb-1 block text-sm font-semibold text-slate-700">First Name *</label>
+                <input id="profile_first_name" name="first_name" type="text" value="{{ old('first_name', $employee?->first_name) }}" readonly required class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
+                @error('first_name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+            </div>
+            <div>
+                <label for="profile_last_name" class="mb-1 block text-sm font-semibold text-slate-700">Last Name *</label>
+                <input id="profile_last_name" name="last_name" type="text" value="{{ old('last_name', $employee?->last_name) }}" readonly required class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
+                @error('last_name')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+            </div>
+            <div class="md:col-span-2">
+                <label for="profile_email" class="mb-1 block text-sm font-semibold text-slate-700">Email *</label>
+                <input id="profile_email" name="email" type="email" value="{{ old('email', $employee?->email ?? auth()->user()->email) }}" readonly required class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
+                @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+            </div>
+            <div class="md:col-span-2 flex justify-end">
+                <button type="submit" id="save-personal-information" class="hidden rounded-lg bg-[#003a78] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f61]">Save Changes</button>
+            </div>
+        </form>
+    </article>
+
+    <script @cspNonce>
+        const editPersonalInformation = document.getElementById('edit-personal-information');
+        const savePersonalInformation = document.getElementById('save-personal-information');
+        const personalInformationForm = document.getElementById('personal-information-form');
+
+        editPersonalInformation?.addEventListener('click', () => {
+            personalInformationForm?.querySelectorAll('input[name="first_name"], input[name="last_name"], input[name="email"]').forEach((input) => {
+                input.readOnly = false;
+                input.classList.remove('bg-slate-50');
+            });
+            editPersonalInformation.classList.add('hidden');
+            savePersonalInformation?.classList.remove('hidden');
+            personalInformationForm?.querySelector('input[name="first_name"]')?.focus();
+        });
+    </script>
+
+    <article class="rounded-2xl border border-slate-300 bg-white p-6 shadow-sm">
         <h2 class="text-3xl font-bold text-slate-900">Profile Information</h2>
         <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:col-span-2">
