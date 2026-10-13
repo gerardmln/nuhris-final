@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Hr;
 
+use App\Jobs\ProcessLeaveUpload;
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
 use App\Models\AnnouncementNotification;
@@ -1103,10 +1104,8 @@ class OperationsController extends Controller
     /**
      * Import leave applications from an .xlsx export.
      */
-    public function uploadLeaves(Request $request, LeaveMonitoringService $leaveMonitoringService): RedirectResponse
+    public function uploadLeaves(Request $request): RedirectResponse
     {
-        @set_time_limit(180);
-
         $validated = $request->validate([
             'leaves_file' => ['required', 'file', 'mimes:xlsx,xls', 'max:10240'],
         ], [
@@ -1117,6 +1116,23 @@ class OperationsController extends Controller
 
         /** @var \Illuminate\Http\UploadedFile $file */
         $file = $validated['leaves_file'];
+
+        $path = $file->store('leave-imports');
+        ProcessLeaveUpload::dispatch($path, $request->user()?->id);
+
+        return back()->with('success', 'Leave file uploaded and queued for processing. You can continue working while it imports.');
+    }
+
+    public function processLeaveUpload(Request $request, LeaveMonitoringService $leaveMonitoringService): RedirectResponse
+    {
+        @set_time_limit(0);
+
+        /** @var \Illuminate\Http\UploadedFile|null $file */
+        $file = $request->file('leaves_file');
+
+        if (! $file) {
+            return back()->with('error', 'The queued leave file could not be found.');
+        }
 
         try {
             $spreadsheet = SpreadsheetIOFactory::load($file->getRealPath());
