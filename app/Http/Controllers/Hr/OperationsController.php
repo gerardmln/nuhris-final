@@ -705,10 +705,11 @@ class OperationsController extends Controller
             ->groupBy('employee_id')
             ->map(fn ($group) => $group->count());
 
-        $leaveCards = $employees->map(function (Employee $employee) use ($absencesByEmployee) {
+        $leaveCards = $employees->map(function (Employee $employee) use ($absencesByEmployee, $leaveBalanceService) {
             $balances = $employee->leaveBalances;
             $today = now()->startOfDay();
             $hireDate = $employee->hire_date ? Carbon::parse($employee->hire_date)->startOfDay() : null;
+            $calendarYearStart = $leaveBalanceService->currentCalendarYearStart();
             $leaveMonitoringService = app(LeaveMonitoringService::class);
             $isRegularEmployee = $leaveMonitoringService->isRegularEmployee($employee, $today);
 
@@ -727,7 +728,9 @@ class OperationsController extends Controller
             });
 
             // Only approved leave requests should affect usage totals.
-            $approvedRequests = $requests->where('status', 'approved');
+            $approvedRequests = $requests
+                ->where('status', 'approved')
+                ->filter(fn (LeaveRequest $request) => $request->start_date?->gte($calendarYearStart));
 
             // Calculate used days per leave type from actual requests
             $usedByType = $approvedRequests->groupBy(fn ($r) => strtolower((string) $r->leave_type));
@@ -1187,6 +1190,7 @@ class OperationsController extends Controller
         $applied = [];
         $queuedAttendanceRows = [];
         $queuedWfhRequests = [];
+        $affectedEmployees = [];
 
         foreach ($dataRows as $rowNumber => $row) {
             if (empty(array_filter($row, fn ($v) => $v !== null && $v !== ''))) {
@@ -1217,6 +1221,8 @@ class OperationsController extends Controller
                 $unmatched[trim($employeeName.' ('.$employeeCode.')', ' ()')] = true;
                 continue;
             }
+
+            $affectedEmployees[$employee->id] = $employee;
 
             $startDate = $this->parseExcelDate($row[$columnIndex['date_from']] ?? null);
             $endDate = $this->parseExcelDate($row[$columnIndex['date_to']] ?? null) ?? $startDate;
@@ -1298,6 +1304,18 @@ class OperationsController extends Controller
 
             $applied[$employee->full_name . ' (' . $employee->employee_id . ')'] = true;
         }
+
+        foreach ($affectedEmployees as $employee) {
+            app(LeaveBalanceService::class)->initializeOrUpdateBalance($employee);
+        }
+
+        $remainingBalances = LeaveBalance::query()
+            ->whereIn('employee_id', array_keys($affectedEmployees))
+            ->get()
+            ->mapWithKeys(fn (LeaveBalance $balance): array => [
+                $balance->employee_id.'|'.$balance->leave_type => (float) $balance->remaining_days,
+            ])
+            ->union($remainingBalances);
 
         $attendanceFulfilled = $this->insertQueuedAttendanceRows($queuedAttendanceRows);
         $wfhNotifications = $this->sendQueuedWfhUploadRequiredNotifications(

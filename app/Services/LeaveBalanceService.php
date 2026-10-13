@@ -125,78 +125,25 @@ class LeaveBalanceService
     }
 
     /**
-     * Calculate total credits including yearly accrual.
-     * 
-     * Rules:
-     * - Start with base credits
-     * - For each complete year of service (if regular):
-     *   - Add yearly increment
-     *   - Stop when reaching maximum
+     * Calculate total credits from completed hire anniversaries.
      */
     private function calculateTotalCredits(Employee $employee, string $leaveType, int $baseAmount): float
     {
         $totalCredits = (float) $baseAmount;
 
-        // Only accrue if employee meets the initial regular threshold
-        if (! $this->isRegularWithYearService($employee)) {
+        if (! $employee->hire_date) {
             return $totalCredits;
         }
 
         $increment = self::YEARLY_INCREMENT[$leaveType] ?? 0;
         $maxCredits = self::MAX_CREDITS[$leaveType] ?? PHP_INT_MAX;
 
-        $employmentType = strtoupper((string) $employee->employment_type);
+        $completeYears = (int) floor(Carbon::parse($employee->hire_date)->diffInYears(now()));
+        $totalCredits += $completeYears * $increment;
 
-        // ASP employees: first increment at 6 months, then yearly on anniversary
-        if (str_contains($employmentType, 'ASP') || str_contains($employmentType, 'ADMIN SUPPORT')) {
-            if (! $employee->hire_date) {
-                return $totalCredits;
-            }
-
-            $hireDate = Carbon::parse($employee->hire_date);
-            $months = $hireDate->diffInMonths(now(), false);
-
-            $increments = 0;
-
-            if ($months >= 6) {
-                // initial 6-month increment
-                $increments += 1;
-            }
-
-            // Add yearly increments for each complete year of service
-            if ($months >= 12) {
-                $increments += (int) floor($months / 12);
-            }
-
-            for ($i = 0; $i < $increments; $i++) {
-                if ($totalCredits + $increment <= $maxCredits) {
-                    $totalCredits += $increment;
-                } else {
-                    $totalCredits = $maxCredits;
-                    break;
-                }
-            }
-
-            return $totalCredits;
+        if ($totalCredits > $maxCredits) {
+            $totalCredits = $maxCredits;
         }
-
-        // Faculty and other regular employees: accrue per complete year
-        $yearsOfService = $this->getYearsOfService($employee);
-
-        if ($yearsOfService >= 1) {
-            $completeYears = (int) floor($yearsOfService);
-
-            for ($i = 0; $i < $completeYears; $i++) {
-                if ($totalCredits + $increment <= $maxCredits) {
-                    $totalCredits += $increment;
-                } else {
-                    $totalCredits = $maxCredits;
-                    break;
-                }
-            }
-        }
-
-        return $totalCredits;
 
         return $totalCredits;
     }
@@ -259,22 +206,13 @@ class LeaveBalanceService
             ->where('employee_id', $employee->id)
             ->where('leave_type', $leaveType)
             ->where('status', 'approved')
-            ->whereDate('start_date', '>=', $this->currentEmploymentYearStart($employee)->toDateString())
+            ->whereDate('start_date', '>=', $this->currentCalendarYearStart()->toDateString())
             ->sum('days_deducted');
     }
 
-    private function currentEmploymentYearStart(Employee $employee): Carbon
+    public function currentCalendarYearStart(): Carbon
     {
-        if (! $employee->hire_date) {
-            return now()->startOfYear();
-        }
-
-        $hireDate = Carbon::parse($employee->hire_date);
-        $anniversary = $hireDate->copy()->year(now()->year)->startOfDay();
-
-        return $anniversary->isFuture()
-            ? $anniversary->subYear()
-            : $anniversary;
+        return now()->startOfYear();
     }
 
     /**
@@ -316,7 +254,7 @@ class LeaveBalanceService
             $requests = $approvedRequests->get($leaveType, collect());
             $totalDays = (float) ($this->isDeductibleLeaveType($leaveType)
                 ? $requests
-                    ->filter(fn (LeaveRequest $request) => $request->start_date?->gte($this->currentEmploymentYearStart($employee)))
+                    ->filter(fn (LeaveRequest $request) => $request->start_date?->gte($this->currentCalendarYearStart()))
                     ->sum('days_deducted')
                 : $requests->sum('days_deducted'));
             $count = $requests->count();

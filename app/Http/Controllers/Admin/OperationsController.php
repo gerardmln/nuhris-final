@@ -1648,10 +1648,11 @@ class OperationsController extends Controller
             ->groupBy('employee_id')
             ->map(fn ($group) => $group->count());
 
-        $leaveCards = $employees->map(function (Employee $employee) use ($absencesByEmployee) {
+        $leaveCards = $employees->map(function (Employee $employee) use ($absencesByEmployee, $leaveBalanceService) {
             $balances = $employee->leaveBalances;
             $today = now()->startOfDay();
             $hireDate = $employee->hire_date ? Carbon::parse($employee->hire_date)->startOfDay() : null;
+            $calendarYearStart = $leaveBalanceService->currentCalendarYearStart();
             $leaveMonitoringService = app(LeaveMonitoringService::class);
             $isRegularEmployee = $leaveMonitoringService->isRegularEmployee($employee, $today);
 
@@ -1669,7 +1670,9 @@ class OperationsController extends Controller
                 return $startDate->lte($today);
             });
 
-            $approvedRequests = $requests->where('status', 'approved');
+            $approvedRequests = $requests
+                ->where('status', 'approved')
+                ->filter(fn (LeaveRequest $request) => $request->start_date?->gte($calendarYearStart));
             $usedByType = $approvedRequests->groupBy(fn ($r) => strtolower((string) $r->leave_type));
 
             $vacationUsed = (float) collect(['vacation leave', 'vacation', 'vl'])

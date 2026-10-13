@@ -261,8 +261,8 @@ $leaveBalanceService->initializeOrUpdateBalance($employee);
 
 ### 2. Yearly Accrual
 - Calculated based on **complete years of service**
-- Leave usage resets at the start of each employee's employment-anniversary year
-- The anniversary reset command runs daily at 12:05 AM and refreshes employees whose anniversary is that day
+- Leave usage resets every January 1
+- The annual reset command runs daily at 12:05 AM and processes all employees on January 1
 - The scheduler must be running for automatic resets: `php artisan schedule:work` or a server cron calling `php artisan schedule:run`
 
 ### 3. Balance Calculation Formula
@@ -271,7 +271,7 @@ Remaining Balance = Total Credits - Used Days
 
 Where:
 Total Credits = Base Credits + Yearly Accrual (capped at max)
-Used Days = Sum of approved deductible leave days in the current employment-anniversary year
+Used Days = Sum of approved deductible leave days in the current calendar year
 ```
 
 ### 4. No Rollover
