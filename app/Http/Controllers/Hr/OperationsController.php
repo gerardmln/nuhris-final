@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Hr;
 
-use App\Jobs\ProcessLeaveUpload;
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
 use App\Models\AnnouncementNotification;
@@ -1117,10 +1116,7 @@ class OperationsController extends Controller
         /** @var \Illuminate\Http\UploadedFile $file */
         $file = $validated['leaves_file'];
 
-        $path = $file->store('leave-imports');
-        ProcessLeaveUpload::dispatch($path, $request->user()?->id);
-
-        return back()->with('success', 'Leave file uploaded and queued for processing. You can continue working while it imports.');
+        return $this->processLeaveUpload($request, app(LeaveMonitoringService::class));
     }
 
     public function processLeaveUpload(Request $request, LeaveMonitoringService $leaveMonitoringService): RedirectResponse
