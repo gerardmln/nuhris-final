@@ -12,6 +12,7 @@ class LeaveRequest extends Model
 
     protected $fillable = [
         'employee_id',
+        'source_leave_id',
         'leave_type',
         'start_date',
         'end_date',

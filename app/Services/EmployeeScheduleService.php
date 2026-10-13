@@ -423,7 +423,10 @@ class EmployeeScheduleService
         $status = 'present';
         $notes = 'Approved leave: '.$leaveLabel;
 
-        if (($policy['requires_regular'] ?? false) && ! $isRegular) {
+        if ($leaveBalanceService->isPartTimeEmployee($employee)) {
+            $status = 'absent';
+            $notes = 'Approved leave (part-time employee): '.$leaveLabel;
+        } elseif (($policy['requires_regular'] ?? false) && ! $isRegular) {
             $status = 'absent';
             $notes = 'Approved leave (non-regular): '.$leaveLabel;
         } elseif (! empty($policy['requires_wfh_submission'])) {

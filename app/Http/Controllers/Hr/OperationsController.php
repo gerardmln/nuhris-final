@@ -1160,14 +1160,19 @@ class OperationsController extends Controller
             ->get()
             ->flatMap(function (LeaveRequest $leave): array {
                 $startDate = $leave->start_date?->toDateString();
+                $keys = [];
 
-                if (! $startDate) {
-                    return [];
+                if ($leave->source_leave_id) {
+                    $keys[] = $leave->employee_id.'|source|'.$leave->source_leave_id;
                 }
 
-                return [
-                    $leave->employee_id.'|'.$startDate.'|'.$leave->leave_type => $leave,
-                ];
+                if (! $startDate) {
+                    return collect($keys)->mapWithKeys(fn (string $key): array => [$key => $leave])->all();
+                }
+
+                $keys[] = $leave->employee_id.'|'.$startDate.'|'.$leave->leave_type;
+
+                return collect($keys)->mapWithKeys(fn (string $key): array => [$key => $leave])->all();
             });
         $remainingBalances = LeaveBalance::query()
             ->whereIn('employee_id', $employeeIds)
@@ -1235,6 +1240,7 @@ class OperationsController extends Controller
 
             $totalHours = (float) ($row[$columnIndex['total_hours']] ?? 0);
             $daysDeducted = $totalHours > 0 ? round($totalHours / 8, 2) : 0;
+            $sourceLeaveId = trim((string) ($row[$columnIndex['leave_id']] ?? '')) ?: null;
 
             $leaveType = trim((string) ($row[$columnIndex['application']] ?? 'Leave'));
             $category = trim((string) ($row[$columnIndex['type']] ?? ''));
@@ -1255,6 +1261,7 @@ class OperationsController extends Controller
             $reasonParts = array_filter([$category, $statusRaw ? 'Source status: '.$statusRaw : null]);
 
             $attributes = [
+                'source_leave_id' => $sourceLeaveId,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'leave_type' => $policy['storage_leave_type'],
@@ -1264,9 +1271,15 @@ class OperationsController extends Controller
                 'reason' => $reasonParts ? implode(' · ', $reasonParts) : null,
             ];
 
-            $existing = collect(array_values(array_unique([$leaveType, $policy['storage_leave_type']])))->map(
-                fn (string $type) => $existingLeaveRequests->get($employee->id.'|'.$startDate.'|'.$type)
-            )->first();
+            $existing = $sourceLeaveId
+                ? $existingLeaveRequests->get($employee->id.'|source|'.$sourceLeaveId)
+                : null;
+
+            if (! $existing) {
+                $existing = collect(array_values(array_unique([$leaveType, $policy['storage_leave_type']])))->map(
+                    fn (string $type) => $existingLeaveRequests->get($employee->id.'|'.$startDate.'|'.$type)
+                )->first();
+            }
 
             // Persist all imported leave rows so the Leave Monitoring module
             // can reflect every leave type (tracked or not). Previously,
@@ -1276,6 +1289,9 @@ class OperationsController extends Controller
                 $updated++;
             } else {
                 $existing = LeaveRequest::create(array_merge(['employee_id' => $employee->id], $attributes));
+                if ($sourceLeaveId) {
+                    $existingLeaveRequests->put($employee->id.'|source|'.$sourceLeaveId, $existing);
+                }
                 $existingLeaveRequests->put($employee->id.'|'.$startDate.'|'.$policy['storage_leave_type'], $existing);
                 $imported++;
             }
@@ -1439,7 +1455,10 @@ class OperationsController extends Controller
             $status = 'absent';
             $notes = 'Approved leave: '.($policy['label'] ?? $storageType);
 
-            if (($policy['requires_regular'] ?? false) && ! $isRegular) {
+            if ($leaveBalanceService->isPartTimeEmployee($employee)) {
+                $status = 'absent';
+                $notes = 'Approved leave (part-time employee): '.($policy['label'] ?? $storageType);
+            } elseif (($policy['requires_regular'] ?? false) && ! $isRegular) {
                 $status = 'absent';
                 $notes = 'Approved leave (non-regular): '.($policy['label'] ?? $storageType);
             } elseif ($isDeductible) {
@@ -1689,6 +1708,7 @@ class OperationsController extends Controller
 
         return [
             'employee_id' => $find(['employee id', 'employee_id', 'emp id']),
+            'leave_id' => $find(['leave id', 'leave_id', 'application id', 'application no', 'application number']),
             'employee_name' => $find(['employee name', 'employee_name', 'name']),
             'application' => $find(['application', 'application type', 'leave type']),
             'type' => $find(['type', 'category']),

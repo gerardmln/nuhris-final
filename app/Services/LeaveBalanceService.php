@@ -34,6 +34,11 @@ class LeaveBalanceService
             'Sick Leave' => 9,
             'Emergency Leave' => 3,
         ],
+        'part_time_faculty' => [
+            'Vacation Leave' => 9,
+            'Sick Leave' => 9,
+            'Emergency Leave' => 3,
+        ],
     ];
 
     /**
@@ -69,7 +74,7 @@ class LeaveBalanceService
         $typeKey = $this->determineEmployeeTypeKey($employmentType);
         
         if (!$typeKey) {
-            // Part-time and unknown employee types should not keep leave balance rows.
+            // Unknown employee types should not keep leave balance rows.
             LeaveBalance::query()->where('employee_id', $employee->id)->delete();
             return;
         }
@@ -106,6 +111,12 @@ class LeaveBalanceService
      */
     private function determineEmployeeTypeKey(string $employmentType): ?string
     {
+        if (str_contains($employmentType, 'part-time') ||
+            str_contains($employmentType, 'part time') ||
+            str_contains($employmentType, 'parttime')) {
+            return 'part_time_faculty';
+        }
+
         if (str_contains($employmentType, 'faculty')) {
             return 'faculty';
         }
@@ -113,12 +124,6 @@ class LeaveBalanceService
         if (str_contains($employmentType, 'asp') || 
             str_contains($employmentType, 'admin support')) {
             return 'asp';
-        }
-
-        if (str_contains($employmentType, 'part-time') ||
-            str_contains($employmentType, 'part time') ||
-            str_contains($employmentType, 'parttime')) {
-            return null;
         }
 
         return null;
@@ -131,7 +136,7 @@ class LeaveBalanceService
     {
         $totalCredits = (float) $baseAmount;
 
-        if (! $employee->hire_date) {
+        if (! $employee->hire_date || $this->isPartTimeEmployee($employee)) {
             return $totalCredits;
         }
 
@@ -146,6 +151,15 @@ class LeaveBalanceService
         }
 
         return $totalCredits;
+    }
+
+    public function isPartTimeEmployee(Employee $employee): bool
+    {
+        $employmentType = strtolower(trim((string) $employee->employment_type));
+
+        return str_contains($employmentType, 'part-time') ||
+            str_contains($employmentType, 'part time') ||
+            str_contains($employmentType, 'parttime');
     }
 
     /**
