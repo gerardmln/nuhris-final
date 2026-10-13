@@ -224,6 +224,10 @@ function updateEmployeeFormState(form) {
     const departmentControl = getControl(form, 'department');
     const rankingField = getField(form, 'ranking');
     const rankingControl = getControl(form, 'ranking');
+    const employmentStatusControl = getControl(form, 'employment_status');
+    const employmentStatusField = getField(form, 'employment_status');
+    const employmentStatusHidden = getControl(form, 'employment_status_hidden');
+    const employmentStatusHelp = form.querySelector('[data-employee-help="employment_status"]');
 
     const needsDepartment = needsDepartmentSelection(employmentType, position);
     const needsRanking = requiresGroupedRanking(position);
@@ -262,6 +266,25 @@ function updateEmployeeFormState(form) {
 
         if (!needsRanking) {
             rankingControl.value = '';
+        }
+
+        if (employmentStatusControl) {
+            const isPartTime = isPartTimeFacultyValue(employmentType);
+            setFieldVisible(employmentStatusField, !isPartTime);
+            employmentStatusControl.disabled = isPartTime;
+            if (employmentStatusHidden) {
+                employmentStatusHidden.name = isPartTime ? 'employment_status' : '';
+                employmentStatusHidden.value = 'probationary';
+                employmentStatusHidden.disabled = !isPartTime;
+            }
+            if (isPartTime) {
+                employmentStatusControl.value = 'probationary';
+                if (employmentStatusHelp) {
+                    employmentStatusHelp.classList.remove('hidden');
+                }
+            } else if (employmentStatusHelp) {
+                employmentStatusHelp.classList.add('hidden');
+            }
         }
     }
 }

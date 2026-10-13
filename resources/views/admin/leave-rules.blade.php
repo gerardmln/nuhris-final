@@ -82,7 +82,7 @@
                     </div>
                     <select name="applies_to" class="w-full rounded-xl border border-slate-300 px-3 py-2">
                         <option>All Employees</option>
-                        <option>Full - Time Employees</option>
+                        <option>Regular Employees</option>
                         <option>Faculty only</option>
                         <option>Female Employees</option>
                         <option>Male Employees</option>

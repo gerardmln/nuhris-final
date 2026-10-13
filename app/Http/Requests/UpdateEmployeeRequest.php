@@ -24,14 +24,23 @@ class UpdateEmployeeRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $position = Str::lower((string) $this->input('position'));
+        $employmentStatus = $this->input('employment_status');
 
         if (! Str::contains($position, '(shs)')) {
+            if ($employmentStatus === null || Str::lower((string) $this->input('employment_type')) === 'part-time faculty') {
+                $this->merge(['employment_status' => 'probationary']);
+            }
+
             return;
         }
 
         $this->merge([
             'department_id' => Department::shsId(),
         ]);
+
+        if ($employmentStatus === null || Str::lower((string) $this->input('employment_type')) === 'part-time faculty') {
+            $this->merge(['employment_status' => 'probationary']);
+        }
     }
 
     /**
@@ -56,6 +65,7 @@ class UpdateEmployeeRequest extends FormRequest
             || Str::contains($selectedPosition, ['professor', 'dean', 'program chair', 'instructor', '(shs)']);
         $allowedRankings = $this->allowedRankingsForPosition($selectedPosition, $rankings);
         $requiresRanking = ! empty($allowedRankings);
+        $employmentStatuses = $isPartTimeFaculty ? ['probationary'] : ['regular', 'probationary'];
 
         $allowedPositions = match (true) {
             $isPartTimeFaculty => ['Part-Time Faculty'],
@@ -75,6 +85,7 @@ class UpdateEmployeeRequest extends FormRequest
             'department_id' => [Rule::requiredIf($requiresDepartment), 'nullable', 'exists:departments,id'],
             'position' => ['required', Rule::in($allowedPositions)],
             'employment_type' => ['required', Rule::in($employmentTypes)],
+            'employment_status' => ['required', Rule::in($employmentStatuses)],
             'ranking' => [
                 Rule::requiredIf($requiresRanking),
                 'nullable',

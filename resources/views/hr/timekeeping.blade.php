@@ -133,7 +133,7 @@
 
                     <select name="employee_class" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
                         <option value="all" @selected(($employeeClass ?? 'all') === 'all')>All Employee Types</option>
-                        <option value="regular" @selected(($employeeClass ?? '') === 'regular')>Full - Time Employees</option>
+                        <option value="regular" @selected(($employeeClass ?? '') === 'regular')>Regular Employees</option>
                         <option value="irregular" @selected(($employeeClass ?? '') === 'irregular')>Probationary Employees</option>
                     </select>
 

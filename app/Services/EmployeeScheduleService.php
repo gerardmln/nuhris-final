@@ -208,7 +208,7 @@ class EmployeeScheduleService
         $hasScheduledWork = (bool) ($scheduleDay?->has_work);
 
         if ($academicDayType === 'non_working') {
-            if (! app(LeaveMonitoringService::class)->isRegularEmployee($employee, $date)) {
+            if (! app(LeaveMonitoringService::class)->isEligibleForAttendance($employee, $date)) {
                 return [
                     'schedule_status' => 'non_working_day',
                     'schedule_notes' => 'Academic calendar non-working date (non-regular employee)',
@@ -260,7 +260,7 @@ class EmployeeScheduleService
         }
 
         if ($submission && $scheduleDay && ! $scheduleDay->has_work && $academicDayType !== 'working') {
-            if (($timeIn || $timeOut) && app(LeaveMonitoringService::class)->isRegularEmployee($employee, $date)) {
+            if (($timeIn || $timeOut) && app(LeaveMonitoringService::class)->isEligibleForAttendance($employee, $date)) {
                 return [
                     'schedule_status' => 'validated',
                     'schedule_notes' => 'Non-working day: present due to attendance record',
@@ -418,7 +418,7 @@ class EmployeeScheduleService
         $policy = $leaveMonitoring->resolvePolicy((string) $leave->leave_type);
         $leaveLabel = $policy['label'] ?? trim((string) $leave->leave_type) ?: 'Leave';
         $storageType = $policy['storage_leave_type'] ?? $leaveLabel;
-        $isRegular = $leaveMonitoring->isRegularEmployee($employee, $date);
+        $isRegular = $leaveMonitoring->isEligibleForAttendance($employee, $date);
 
         $status = 'present';
         $notes = 'Approved leave: '.$leaveLabel;

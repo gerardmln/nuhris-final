@@ -24,14 +24,23 @@ class StoreEmployeeRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $position = Str::lower((string) $this->input('position'));
+        $employmentStatus = $this->input('employment_status');
 
         if (! Str::contains($position, '(shs)')) {
+            if ($employmentStatus === null || Str::lower((string) $this->input('employment_type')) === 'part-time faculty') {
+                $this->merge(['employment_status' => 'probationary']);
+            }
+
             return;
         }
 
         $this->merge([
             'department_id' => Department::shsId(),
         ]);
+
+        if ($employmentStatus === null || Str::lower((string) $this->input('employment_type')) === 'part-time faculty') {
+            $this->merge(['employment_status' => 'probationary']);
+        }
     }
 
     /**
@@ -69,6 +78,7 @@ class StoreEmployeeRequest extends FormRequest
         };
 
         $isAdminEmployeeCreate = $this->route()?->getName() === 'admin.employees.store';
+        $employmentStatuses = $isPartTimeFaculty ? ['probationary'] : ['regular', 'probationary'];
 
         return [
             'employee_id' => [
@@ -83,6 +93,7 @@ class StoreEmployeeRequest extends FormRequest
             'department_id' => [Rule::requiredIf($requiresDepartment), 'nullable', 'exists:departments,id'],
             'position' => ['required', Rule::in($allowedPositions)],
             'employment_type' => ['required', Rule::in($employmentTypes)],
+            'employment_status' => ['required', Rule::in($employmentStatuses)],
             'ranking' => [
                 Rule::requiredIf($requiresRanking),
                 'nullable',

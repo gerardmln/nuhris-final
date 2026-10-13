@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
 use App\Mail\EmployeeCredentialsMail;
+use App\Models\Announcement;
+use App\Models\AnnouncementNotification;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\User;
@@ -119,9 +121,12 @@ class EmployeeController extends Controller
         }
 
         if ($employeeClass === 'regular') {
-            $employeesQuery->where('employment_type', '!=', 'Admin Support Personnel');
+            $employeesQuery->where('employment_status', 'regular');
         } elseif ($employeeClass === 'irregular') {
-            $employeesQuery->where('employment_type', 'Admin Support Personnel');
+            $employeesQuery->where(function ($query) {
+                $query->where('employment_status', 'probationary')
+                    ->orWhereNull('employment_status');
+            });
         }
 
         $employees = $employeesQuery->paginate(15)->withQueryString();
@@ -161,6 +166,7 @@ class EmployeeController extends Controller
         $payload = $request->validated();
         $payload = $this->applyDefaultDepartmentForNonTeachingRoles($payload);
         $previousEmail = $employee->email;
+        $wasRegular = $employee->employment_status === 'regular';
         $employee->update($payload);
 
         $user = User::query()->where('email', $previousEmail)->first();
@@ -168,6 +174,27 @@ class EmployeeController extends Controller
         if ($user) {
             $user->forceFill(['email' => $employee->email, 'name' => $employee->full_name])->save();
             app(SupabaseAuthSyncService::class)->syncUser($user, null);
+        }
+
+        if (! $wasRegular && $employee->employment_status === 'regular' && $user) {
+            $announcement = Announcement::create([
+                'title' => 'Congratulations on Your Regular Employment Status!',
+                'content' => 'Congratulations, '.$employee->full_name.'! Your employment status has been updated to Regular. We appreciate your continued commitment and contributions to NU Lipa.',
+                'type' => Announcement::TYPE_NOTIFICATION,
+                'priority' => 'high',
+                'target_user_id' => $user->id,
+                'is_published' => true,
+                'published_at' => now(),
+                'created_by' => $request->user()->id,
+            ]);
+
+            AnnouncementNotification::create([
+                'announcement_id' => $announcement->id,
+                'user_id' => $user->id,
+                'is_read' => false,
+                'read_at' => null,
+                'redirect_url' => route('employee.notifications'),
+            ]);
         }
 
         app(AuditLogService::class)->record(

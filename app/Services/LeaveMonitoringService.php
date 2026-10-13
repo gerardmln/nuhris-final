@@ -92,7 +92,8 @@ class LeaveMonitoringService
             return true;
         }
 
-        return $this->isRegularEmployee($employee, $referenceDate);
+        return $this->isRegularEmployee($employee, $referenceDate)
+            || $this->isEmployeeWithOneYearService($employee, $referenceDate);
     }
 
     public function isRegularEmployee(Employee $employee, ?Carbon $referenceDate = null): bool
@@ -111,25 +112,17 @@ class LeaveMonitoringService
             return false;
         }
 
-        if (! $employee->hire_date) {
-            return false;
-        }
+        return (string) $employee->employment_status === 'regular';
+    }
 
-        $referenceDate ??= now();
-        $hireDate = Carbon::parse($employee->hire_date)->startOfDay();
-
-        // Faculty: regular if hired at least 1 year ago.
-        if (str_contains($employmentType, 'FACULTY')) {
-            return $hireDate->lte($referenceDate->copy()->subYear());
-        }
-
-        // ASP / Admin Support Personnel: regular if hired at least 6 months ago.
-        if (str_contains($employmentType, 'ADMIN SUPPORT PERSONNEL') || str_contains($employmentType, 'ASP')) {
-            return $hireDate->lte($referenceDate->copy()->subMonths(6));
-        }
-
-        // Unknown employment classifications are treated as non-regular for safety.
-        return false;
+    /**
+     * A probationary employee receives leave and DTR attendance benefits
+     * after one year of service, except for part-time faculty.
+     */
+    public function isEligibleForAttendance(Employee $employee, ?Carbon $referenceDate = null): bool
+    {
+        return $this->isRegularEmployee($employee, $referenceDate)
+            || $this->isEmployeeWithOneYearService($employee, $referenceDate);
     }
 
     public function applyEmployeeClassFilter(Builder $query, string $employeeClass, ?Carbon $referenceDate = null): Builder
@@ -142,12 +135,13 @@ class LeaveMonitoringService
 
         $referenceDate ??= now();
 
-        [$regularSql, $bindings] = $this->regularEmployeeSql($referenceDate);
-
         if ($employeeClass === 'regular') {
-            $query->whereRaw($regularSql, $bindings);
+            $query->where('employment_status', 'regular');
         } else {
-            $query->whereRaw('NOT ('.$regularSql.')', $bindings);
+            $query->where(function (Builder $nested): void {
+                $nested->where('employment_status', 'probationary')
+                    ->orWhereNull('employment_status');
+            });
         }
 
         return $query;
@@ -234,48 +228,29 @@ class LeaveMonitoringService
         return false;
     }
 
-    /**
-     * @return array{0:string,1:array<int, string>}
-     */
-    private function regularEmployeeSql(Carbon $referenceDate): array
+    private function isEmployeeWithOneYearService(Employee $employee, ?Carbon $referenceDate = null): bool
     {
-        $facultyThreshold = $referenceDate->copy()->subYear()->toDateString();
-        $aspThreshold = $referenceDate->copy()->subMonths(6)->toDateString();
+        $employmentType = strtoupper((string) $employee->employment_type);
+        $position = strtoupper((string) $employee->position);
 
-        $sql = <<<'SQL'
-(
-    (
-        UPPER(COALESCE(employment_type, '')) LIKE ?
-        AND UPPER(COALESCE(employment_type, '')) NOT LIKE ?
-            AND UPPER(COALESCE(position, '')) NOT LIKE ?
-        AND hire_date IS NOT NULL
-        AND hire_date <= ?
-    )
-    OR
-    (
-        (
-            UPPER(COALESCE(employment_type, '')) LIKE ?
-            OR UPPER(COALESCE(employment_type, '')) LIKE ?
-        )
-        AND UPPER(COALESCE(employment_type, '')) NOT LIKE ?
-        AND hire_date IS NOT NULL
-        AND hire_date <= ?
-    )
-)
-SQL;
+        if (
+            (! str_contains($employmentType, 'FACULTY')
+                && ! str_contains($employmentType, 'ADMIN SUPPORT PERSONNEL')
+                && ! str_contains($employmentType, 'ASP'))
+            || str_contains($employmentType, 'PART-TIME')
+            || str_contains($employmentType, 'PART TIME')
+            || str_contains($employmentType, 'PARTTIME')
+            || str_contains($position, 'PART-TIME')
+            || str_contains($position, 'PART TIME')
+            || str_contains($position, 'PARTTIME')
+            || ! $employee->hire_date
+        ) {
+            return false;
+        }
 
-        return [
-            $sql,
-            [
-                '%FACULTY%',
-                '%PART-TIME%',
-                '%PART-TIME%',
-                $facultyThreshold,
-                '%ADMIN SUPPORT PERSONNEL%',
-                '%ASP%',
-                '%PART-TIME%',
-                $aspThreshold,
-            ],
-        ];
+        $referenceDate ??= now();
+
+        return Carbon::parse($employee->hire_date)->startOfDay()
+            ->lte($referenceDate->copy()->subYear()->startOfDay());
     }
 }

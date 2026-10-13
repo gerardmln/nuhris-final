@@ -53,6 +53,7 @@ class Employee extends Model
         'department_id',
         'position',
         'employment_type',
+        'employment_status',
         'ranking',
         'status',
         'hire_date',

@@ -136,7 +136,10 @@ class LeaveBalanceService
     {
         $totalCredits = (float) $baseAmount;
 
-        if (! $employee->hire_date || $this->isPartTimeEmployee($employee)) {
+        if (
+            ! $employee->hire_date
+            || $this->isPartTimeEmployee($employee)
+        ) {
             return $totalCredits;
         }
 
@@ -160,41 +163,6 @@ class LeaveBalanceService
         return str_contains($employmentType, 'part-time') ||
             str_contains($employmentType, 'part time') ||
             str_contains($employmentType, 'parttime');
-    }
-
-    /**
-     * Check if employee is regular with at least 1 year of service.
-     */
-    private function isRegularWithYearService(Employee $employee): bool
-    {
-        $employmentType = strtoupper((string) $employee->employment_type);
-
-        // Part-time employees are never regular
-        if (str_contains($employmentType, 'PART-TIME') || 
-            str_contains($employmentType, 'PART TIME') || 
-            str_contains($employmentType, 'PARTTIME')) {
-            return false;
-        }
-
-        if (!$employee->hire_date) {
-            return false;
-        }
-
-        $hireDate = Carbon::parse($employee->hire_date);
-        $referenceDate = now();
-
-        // Faculty: regular if hired at least 1 year ago
-        if (str_contains($employmentType, 'FACULTY')) {
-            return $hireDate->lte($referenceDate->copy()->subYear());
-        }
-
-        // ASP: regular if hired at least 6 months ago
-        if (str_contains($employmentType, 'ASP') || 
-            str_contains($employmentType, 'ADMIN SUPPORT')) {
-            return $hireDate->lte($referenceDate->copy()->subMonths(6));
-        }
-
-        return false;
     }
 
     /**

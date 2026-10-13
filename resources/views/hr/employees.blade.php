@@ -130,7 +130,7 @@
                         <div class="md:col-span-2">
                             <select name="employee_class" onchange="this.form.submit()" class="w-full min-w-0 rounded-md border border-slate-300 px-2 py-2 text-sm focus:border-blue-400 focus:outline-none">
                                 <option value="all" @selected(($filters['employee_class'] ?? 'all') === 'all')>All Employee Types</option>
-                                <option value="regular" @selected(($filters['employee_class'] ?? '') === 'regular')>Full - Time Employees</option>
+                                <option value="regular" @selected(($filters['employee_class'] ?? '') === 'regular')>Regular Employees</option>
                                 <option value="irregular" @selected(($filters['employee_class'] ?? '') === 'irregular')>Probationary Employees</option>
                             </select>
                         </div>
@@ -250,6 +250,7 @@
                                                         data-employee-department-name="{{ $employee->department?->name }}"
                                                         data-employee-position="{{ $employee->position }}"
                                                         data-employee-employment-type="{{ $employee->employment_type }}"
+                                                        data-employee-employment-status="{{ $employee->employment_status }}"
                                                         data-employee-ranking="{{ $employee->ranking }}"
                                                         data-employee-status="{{ $employee->status }}"
                                                         data-employee-hire-date="{{ $employee->hire_date?->format('Y-m-d') }}"
@@ -314,6 +315,15 @@
                             <option value="{{ $type }}">{{ $type }}</option>
                         @endforeach
                     </select>
+                </div>
+                <div data-employee-field="employment_status">
+                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Employment Status *</label>
+                    <select name="employment_status" data-employee-control="employment_status" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700" required>
+                        <option value="regular">Regular</option>
+                        <option value="probationary" selected>Probationary</option>
+                    </select>
+                    <input type="hidden" data-employee-control="employment_status_hidden" value="probationary" disabled>
+                    <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time faculty are always probationary.</p>
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Position *</label>
@@ -404,6 +414,15 @@
                             <option value="{{ $type }}">{{ $type }}</option>
                         @endforeach
                     </select>
+                </div>
+                <div data-employee-field="employment_status">
+                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Employment Status *</label>
+                    <select name="employment_status" data-employee-control="employment_status" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700" required>
+                        <option value="regular">Regular</option>
+                        <option value="probationary" selected>Probationary</option>
+                    </select>
+                    <input type="hidden" data-employee-control="employment_status_hidden" value="probationary" disabled>
+                    <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time faculty are always probationary.</p>
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Position *</label>
@@ -545,6 +564,15 @@
                         @endforeach
                     </select>
                 </div>
+                <div data-employee-field="employment_status">
+                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Employment Status *</label>
+                    <select id="edit-employment-status" name="employment_status" data-employee-control="employment_status" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700" required>
+                        <option value="regular">Regular</option>
+                        <option value="probationary">Probationary</option>
+                    </select>
+                    <input type="hidden" data-employee-control="employment_status_hidden" value="probationary" disabled>
+                    <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time faculty are always probationary.</p>
+                </div>
                 <div>
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Position *</label>
                     <select id="edit-position" name="position" data-employee-control="position" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700" required>
@@ -617,6 +645,7 @@
         const editDepartmentId = document.getElementById('edit-department-id');
         const editPosition = document.getElementById('edit-position');
         const editEmploymentType = document.getElementById('edit-employment-type');
+        const editEmploymentStatus = document.getElementById('edit-employment-status');
         const editRanking = document.getElementById('edit-ranking');
         const editHireDate = document.getElementById('edit-hire-date');
         const editOfficialTimeIn = document.getElementById('edit-official-time-in');
@@ -640,6 +669,7 @@
             const departmentId = trigger.dataset.employeeDepartmentId || '';
             const position = trigger.dataset.employeePosition || '';
             const employmentType = trigger.dataset.employeeEmploymentType || 'N/A';
+            const employmentStatus = trigger.dataset.employeeEmploymentStatus || 'probationary';
             const ranking = trigger.dataset.employeeRanking || 'N/A';
             const status = trigger.dataset.employeeStatus || 'active';
             const hireDate = trigger.dataset.employeeHireDate || '';
@@ -672,6 +702,7 @@
             if (editLastName) editLastName.value = lastName;
             if (editDepartmentId) editDepartmentId.value = departmentId;
             if (editEmploymentType) editEmploymentType.value = employmentType === 'N/A' ? '' : employmentType;
+            if (editEmploymentStatus) editEmploymentStatus.value = employmentStatus;
             if (editPosition) editPosition.value = position;
             if (editRanking) editRanking.value = ranking === 'N/A' ? '' : ranking;
             if (editHireDate) editHireDate.value = hireDate;

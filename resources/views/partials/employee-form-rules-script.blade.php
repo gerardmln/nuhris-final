@@ -162,6 +162,10 @@
             const departmentControl = getControl(form, 'department');
             const rankingField = getField(form, 'ranking');
             const rankingControl = getControl(form, 'ranking');
+            const employmentStatusControl = getControl(form, 'employment_status');
+            const employmentStatusField = getField(form, 'employment_status');
+            const employmentStatusHidden = getControl(form, 'employment_status_hidden');
+            const employmentStatusHelp = form.querySelector('[data-employee-help="employment_status"]');
             const departmentHidden = getControl(form, 'department_hidden');
 
             const needsDepartment = needsDepartmentSelection(employmentType, position);
@@ -198,6 +202,23 @@
 
                 if (!needsRanking) {
                     rankingControl.value = '';
+                }
+            }
+
+            if (employmentStatusControl) {
+                const isPartTime = isPartTimeFacultyValue(employmentType);
+                setFieldVisible(employmentStatusField, !isPartTime);
+                employmentStatusControl.disabled = isPartTime;
+                if (employmentStatusHidden) {
+                    employmentStatusHidden.name = isPartTime ? 'employment_status' : '';
+                    employmentStatusHidden.value = 'probationary';
+                    employmentStatusHidden.disabled = !isPartTime;
+                }
+                if (isPartTime) {
+                    employmentStatusControl.value = 'probationary';
+                    if (employmentStatusHelp) employmentStatusHelp.classList.remove('hidden');
+                } else if (employmentStatusHelp) {
+                    employmentStatusHelp.classList.add('hidden');
                 }
             }
         }
@@ -255,6 +276,59 @@
                     updateEmployeeFormState(form);
                 });
             }, 50);
+        });
+    })();
+</script>
+
+<script @cspNonce>
+    (function () {
+        function syncEmploymentStatusVisibility(form) {
+            const typeControl = form.querySelector('[data-employee-control="employment_type"]');
+            const statusField = form.querySelector('[data-employee-field="employment_status"]');
+            const statusControl = form.querySelector('[data-employee-control="employment_status"]');
+            const statusHidden = form.querySelector('[data-employee-control="employment_status_hidden"]');
+
+            if (!typeControl || !statusField || !statusControl) {
+                return;
+            }
+
+            const isPartTime = String(typeControl.value || '').trim().toLowerCase() === 'part-time faculty';
+            statusField.hidden = isPartTime;
+            statusField.style.display = isPartTime ? 'none' : '';
+            statusControl.disabled = isPartTime;
+
+            if (statusHidden) {
+                statusHidden.name = isPartTime ? 'employment_status' : '';
+                statusHidden.value = 'probationary';
+                statusHidden.disabled = !isPartTime;
+            }
+
+            if (isPartTime) {
+                statusControl.value = 'probationary';
+            }
+        }
+
+        function initializeEmploymentStatusVisibility() {
+            document.querySelectorAll('[data-employee-form]').forEach((form) => {
+                const typeControl = form.querySelector('[data-employee-control="employment_type"]');
+
+                if (typeControl && typeControl.dataset.employmentStatusBound !== '1') {
+                    typeControl.addEventListener('change', () => syncEmploymentStatusVisibility(form));
+                    typeControl.dataset.employmentStatusBound = '1';
+                }
+
+                syncEmploymentStatusVisibility(form);
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeEmploymentStatusVisibility);
+        } else {
+            initializeEmploymentStatusVisibility();
+        }
+
+        document.addEventListener('click', () => {
+            setTimeout(initializeEmploymentStatusVisibility, 0);
         });
     })();
 </script>

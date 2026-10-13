@@ -58,6 +58,17 @@
         @error('employment_type')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
     </div>
 
+    <div data-employee-field="employment_status">
+        <label for="employment_status" class="mb-1 block text-sm font-semibold text-slate-700">Employment Status *</label>
+        <select id="employment_status" name="employment_status" data-employee-control="employment_status" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none" required>
+            <option value="regular" @selected(old('employment_status', $employee->employment_status ?? 'probationary') === 'regular')>Regular</option>
+            <option value="probationary" @selected(old('employment_status', $employee->employment_status ?? 'probationary') === 'probationary')>Probationary</option>
+        </select>
+        <input type="hidden" data-employee-control="employment_status_hidden" value="probationary" disabled>
+        <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time faculty are always probationary.</p>
+        @error('employment_status')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+    </div>
+
     <div>
         <label for="position" class="mb-1 block text-sm font-semibold text-slate-700">Position *</label>
         <select id="position" name="position" data-employee-control="position" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none" required>
