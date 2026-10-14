@@ -1287,7 +1287,7 @@ class OperationsController extends Controller
                 ? $existingLeaveRequests->get($employee->id.'|source|'.$sourceLeaveId)
                 : null;
 
-            if (! $existing) {
+            if (! $existing && ! $sourceLeaveId) {
                 $existing = collect(array_values(array_unique([$leaveType, $policy['storage_leave_type']])))->map(
                     fn (string $type) => $existingLeaveRequests->get($employee->id.'|'.$startDate.'|'.$type)
                 )->first();
