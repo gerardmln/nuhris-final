@@ -20,6 +20,7 @@
                     @endforelse
                 </select>
             </div>
+            <a href="{{ route('admin.dtr.validation.index') }}" class="rounded-lg border border-[#00386f] bg-white px-4 py-2 text-sm font-semibold text-[#00386f] hover:bg-blue-50 transition">Extraction Validation</a>
             <button data-open-modal="upload-dtr-modal" class="rounded-lg bg-[#00386f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f5d] transition">Upload DTR PDF</button>
             <form method="POST" action="{{ route('admin.dtr.clear-cache') }}" onsubmit="return confirm('Clear DTR cache? Attendance records will not be affected.');">
                 @csrf
@@ -49,6 +50,7 @@
                         <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-center"><p class="text-3xl font-extrabold text-amber-700">{{ $importStats['skipped'] ?? 0 }}</p><p class="text-xs font-semibold text-amber-700">Skipped</p></div>
                         <div class="rounded-lg bg-blue-50 border border-blue-200 p-3 text-center"><p class="text-3xl font-extrabold text-blue-700">{{ $importStats['total_records'] ?? 0 }}</p><p class="text-xs font-semibold text-blue-700">Total Records</p></div>
                     </div>
+                    @include('partials.pdf-extraction-details')
                     @if (count($unmatchedList) > 0)
                         <div class="mb-4">
                             <h4 class="text-sm font-bold text-red-700 mb-2">Employees NOT Found in HRIS ({{ count($unmatchedList) }})</h4>

@@ -12,7 +12,7 @@
         <span class="whitespace-nowrap">Latest uploaded file:</span>
         <select class="min-w-0 truncate rounded-md border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700" aria-label="Latest uploaded employee files">
             @forelse ($latestBulkUploads as $upload)
-                <option>{{ $upload->metadata['original_filename'] }} ({{ $upload->created_at->format('M j, Y g:i A') }})</option>
+                <option>{{ $upload->metadata['original_filename'] }} ({{ $upload->created_at->format('M j, Y g:i A') }}){{ isset($upload->metadata['verification']['field_accuracy']) ? ' · '.$upload->metadata['verification']['field_accuracy'].'% verified' : '' }}</option>
             @empty
                 <option>No uploaded employee files</option>
             @endforelse
@@ -75,6 +75,8 @@
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center"><p class="text-3xl font-extrabold text-slate-700">{{ count($bulkResult['existing']) }}</p><p class="text-xs font-semibold text-slate-600">Already registered</p></div>
                     <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-center"><p class="text-3xl font-extrabold text-red-700">{{ count($bulkResult['failed']) }}</p><p class="text-xs font-semibold text-red-700">With errors</p></div>
                 </div>
+
+                @include('partials.import-verification', ['verification' => $bulkResult['verification'] ?? null])
 
                 @if (count($bulkResult['created']) > 0)
                     <p class="text-sm text-slate-600">Login accounts for new employees are being created and their credentials emailed in the background. This can take a few minutes for large files.</p>

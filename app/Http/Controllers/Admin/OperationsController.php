@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Hr\OperationsController as HrOperationsController;
 use App\Models\AdminAuditLog;
 use App\Models\Announcement;
 use App\Models\AnnouncementNotification;
@@ -16,6 +17,8 @@ use App\Models\LeaveRequest;
 use App\Models\User;
 use App\Models\WfhMonitoringSubmission;
 use App\Services\AuditLogService;
+use App\Services\BiometricPdfParser;
+use App\Services\EmployeeRecordMatcher;
 use App\Services\EmployeeScheduleService;
 use App\Services\LeaveBalanceService;
 use App\Services\LeaveMonitoringService;
@@ -28,15 +31,11 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use PhpOffice\PhpSpreadsheet\IOFactory as SpreadsheetIOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Smalot\PdfParser\Parser as PdfParser;
 
 class OperationsController extends Controller
 {
     protected SupabaseStorageService $storage;
-    private ?array $currentParseEmployee = null;
-
     public function __construct(SupabaseStorageService $storage)
     {
         $this->storage = $storage;
@@ -511,11 +510,8 @@ class OperationsController extends Controller
         $file = $validated['biometrics_file'];
 
         try {
-            $parser = new PdfParser();
-            $pdf = $parser->parseFile($file->getRealPath());
-            $text = $pdf->getText();
-
-            $records = $this->parseBiometricText($text);
+            $extraction = app(BiometricPdfParser::class)->parseFile($file->getRealPath());
+            $records = $extraction['records'];
 
             if (empty($records)) {
                 $this->logAudit('CREATE', 'DTR', 'Failed to import biometric PDF. No attendance rows were detected.', 'Failed');
@@ -641,12 +637,14 @@ class OperationsController extends Controller
                 'original_filename' => $file->getClientOriginalName(),
                 'imported' => $imported,
                 'skipped' => $skipped,
+                ...$this->extractionStats($extraction),
             ]);
 
             return $redirect->with('import_stats', [
                 'imported' => $imported,
                 'skipped' => $skipped,
                 'total_records' => count($records),
+                ...$this->extractionStats($extraction),
             ])->with('success', $message);
         } catch (\Throwable $e) {
             report($e);
@@ -676,322 +674,6 @@ class OperationsController extends Controller
             ->with('success', $deleted > 0
                 ? "Cleared {$deleted} DTR upload cache {$entryLabel}."
                 : 'DTR upload cache is already clear. Attendance records were not changed.');
-    }
-
-    /**
-     * Parse biometric text extracted from PDF into structured records.
-     */
-    private function parseBiometricText(string $text): array
-    {
-        $lines = preg_split('/\r?\n/', $text);
-        $lines = array_map('trim', $lines);
-        $lines = array_filter($lines, fn ($line) => $line !== '');
-        $lines = array_values($lines);
-
-        $records = $this->parseCivilServiceDtrFormat($lines);
-
-        if (empty($records)) {
-            $records = $this->parseNuLipaFormat($lines);
-        }
-
-        if (empty($records)) {
-            $records = $this->parseTabularFormat($lines);
-        }
-
-        if (empty($records)) {
-            $records = $this->parseBlockFormat($lines);
-        }
-
-        if (empty($records)) {
-            $records = $this->parseGenericFormat($text);
-        }
-
-        return $records;
-    }
-
-    /**
-     * Parse Civil Service Form No. 48 / Daily Time Record exports.
-     *
-     * These PDFs identify an employee in the page header and use only the
-     * day number in each attendance row, so the month and year come from the
-     * "For the month of" header.
-     */
-    private function parseCivilServiceDtrFormat(array $lines): array
-    {
-        $records = [];
-        $employeeName = null;
-        $nameCandidate = null;
-        $month = null;
-        $year = null;
-        $seen = [];
-
-        foreach ($lines as $line) {
-            if (preg_match('/^[A-Za-z][A-Za-z\' .-]+,\s*[A-Za-z][A-Za-z\' .-]+$/', $line)) {
-                $nameCandidate = $line;
-            }
-
-            if (strcasecmp($line, 'For the month of') === 0) {
-                $employeeName = $nameCandidate;
-                continue;
-            }
-
-            if (preg_match('/^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})$/i', $line, $matches)) {
-                $month = Carbon::parse($matches[1])->month;
-                $year = (int) $matches[2];
-                continue;
-            }
-
-            if (! $employeeName || ! $month || ! $year) {
-                continue;
-            }
-
-            if (! preg_match('/(?:am|pm)\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)\s*)*([1-9]|[12]\d|3[01])(?:\s|$)/i', $line, $dayMatch, PREG_OFFSET_CAPTURE)) {
-                continue;
-            }
-
-            $day = (int) $dayMatch[1][0];
-            $rowPrefix = substr($line, 0, (int) $dayMatch[1][1]);
-            preg_match_all('/\d{1,2}:\d{2}\s*(?:am|pm)/i', $rowPrefix, $timeMatches);
-
-            if (empty($timeMatches[0])) {
-                continue;
-            }
-
-            try {
-                $date = Carbon::createFromDate($year, $month, $day)->toDateString();
-            } catch (\Throwable) {
-                continue;
-            }
-
-            $times = $timeMatches[0];
-            usort($times, fn (string $a, string $b): int => strtotime($this->normalizeTime($a)) <=> strtotime($this->normalizeTime($b)));
-            $key = $employeeName.'|'.$date;
-
-            if (isset($seen[$key])) {
-                continue;
-            }
-
-            $seen[$key] = true;
-            $records[] = [
-                'employee_id' => '',
-                'name' => $employeeName,
-                'date' => $date,
-                'time_in' => $this->normalizeTime($times[0]),
-                'time_out' => count($times) > 1 ? $this->normalizeTime(end($times)) : null,
-            ];
-        }
-
-        return $records;
-    }
-
-    private function parseNuLipaFormat(array $lines): array
-    {
-        $records = [];
-        $currentEmployee = null;
-
-        foreach ($lines as $line) {
-            if (preg_match('/^Employee:\s*(.+?)\s*\(([^)]+)\)\s*$/i', $line, $matches)) {
-                $currentEmployee = [
-                    'id' => trim($matches[2]),
-                    'name' => trim($matches[1]),
-                ];
-                continue;
-            }
-
-            if (! $currentEmployee) {
-                continue;
-            }
-
-            if (preg_match('/^(Total:|Days\s+Present|Days\s+Absent)/i', $line)) {
-                continue;
-            }
-
-            $date = null;
-            $rest = null;
-
-            // Classic Timesheet Report: "04/07/2026 7:21 am 7:41 pm ..."
-            if (preg_match('#^(\d{1,2}/\d{1,2}/\d{4})\s+(.+)$#', $line, $matches)) {
-                $date = $matches[1];
-                $rest = $matches[2];
-            }
-            // Actual Break and Hours Worked: "...12:38 pm 8:51 am08/01/2026"
-            elseif (preg_match('#^(.+?)(\d{1,2}/\d{1,2}/\d{4})\s*$#', $line, $matches)) {
-                $rest = $matches[1];
-                $date = $matches[2];
-            } else {
-                continue;
-            }
-
-            if (! preg_match_all('/\d{1,2}:\d{2}\s*(?:am|pm)/i', $rest, $timeMatches)) {
-                continue;
-            }
-
-            $times = $timeMatches[0];
-            // Text extraction may list Out before In; use earliest/latest punches.
-            usort($times, function (string $a, string $b): int {
-                return strtotime($this->normalizeTime($a)) <=> strtotime($this->normalizeTime($b));
-            });
-
-            $timeIn = $times[0] ?? null;
-            $timeOut = count($times) > 1 ? end($times) : null;
-
-            $records[] = [
-                'employee_id' => $currentEmployee['id'],
-                'name' => $currentEmployee['name'],
-                'date' => $this->normalizeDate($date),
-                'time_in' => $timeIn ? $this->normalizeTime($timeIn) : null,
-                'time_out' => $timeOut ? $this->normalizeTime($timeOut) : null,
-            ];
-        }
-
-        return $records;
-    }
-
-    private function parseTabularFormat(array $lines): array
-    {
-        $records = [];
-
-        foreach ($lines as $line) {
-            if (preg_match('/(\d{4}-\d{3})\s*[|\t]\s*(.+?)\s*[|\t]\s*(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{4}[\/-]\d{1,2}[\/-]\d{1,2})\s*[|\t]\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)\s*[|\t]\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i', $line, $matches)) {
-                $records[] = [
-                    'employee_id' => $matches[1],
-                    'name' => trim($matches[2]),
-                    'date' => $this->normalizeDate($matches[3]),
-                    'time_in' => $this->normalizeTime($matches[4]),
-                    'time_out' => $this->normalizeTime($matches[5]),
-                ];
-                continue;
-            }
-
-            if (preg_match('/(\d{4}-\d{3})\s+([A-Za-z][A-Za-z\s,\.]+?)\s+(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{4}[\/-]\d{1,2}[\/-]\d{1,2})\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i', $line, $matches)) {
-                $records[] = [
-                    'employee_id' => $matches[1],
-                    'name' => trim($matches[2]),
-                    'date' => $this->normalizeDate($matches[3]),
-                    'time_in' => $this->normalizeTime($matches[4]),
-                    'time_out' => $this->normalizeTime($matches[5]),
-                ];
-                continue;
-            }
-
-            if (preg_match('/(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{4}[\/-]\d{1,2}[\/-]\d{1,2})\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i', $line, $matches)) {
-                if (! empty($this->currentParseEmployee)) {
-                    $records[] = [
-                        'employee_id' => $this->currentParseEmployee['id'],
-                        'name' => $this->currentParseEmployee['name'],
-                        'date' => $this->normalizeDate($matches[1]),
-                        'time_in' => $this->normalizeTime($matches[2]),
-                        'time_out' => $this->normalizeTime($matches[3]),
-                    ];
-                }
-            }
-
-            if (preg_match('/^(?:Employee|Emp|ID)?[:\s]*(\d{4}-\d{3})\s*[:\-\s]+\s*([A-Za-z][A-Za-z\s,\.]+)/i', $line, $matches)) {
-                $this->currentParseEmployee = [
-                    'id' => $matches[1],
-                    'name' => trim($matches[2]),
-                ];
-            }
-        }
-
-        return $records;
-    }
-
-    private function parseBlockFormat(array $lines): array
-    {
-        $records = [];
-        $currentEmployee = null;
-
-        foreach ($lines as $line) {
-            if (preg_match('/(?:name|employee)\s*[:\-]\s*(?:(\d{4}-\d{3})\s*[:\-\s]*)?\s*([A-Za-z][A-Za-z\s,\.]+)/i', $line, $matches)) {
-                $currentEmployee = [
-                    'id' => $matches[1] ?: '',
-                    'name' => trim($matches[2]),
-                ];
-                continue;
-            }
-
-            if ($currentEmployee && empty($currentEmployee['id']) && preg_match('/(?:id|emp[_\s]?id)\s*[:\-]\s*(\d{4}-\d{3})/i', $line, $matches)) {
-                $currentEmployee['id'] = $matches[1];
-                continue;
-            }
-
-            if ($currentEmployee && preg_match('/(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{4}[\/-]\d{1,2}[\/-]\d{1,2})\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i', $line, $matches)) {
-                $records[] = [
-                    'employee_id' => $currentEmployee['id'],
-                    'name' => $currentEmployee['name'],
-                    'date' => $this->normalizeDate($matches[1]),
-                    'time_in' => $this->normalizeTime($matches[2]),
-                    'time_out' => $this->normalizeTime($matches[3]),
-                ];
-            }
-        }
-
-        return $records;
-    }
-
-    private function parseGenericFormat(string $text): array
-    {
-        $records = [];
-
-        preg_match_all(
-            '/(\d{4}-\d{3}).*?(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{4}[\/-]\d{1,2}[\/-]\d{1,2})\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)/is',
-            $text,
-            $matches,
-            PREG_SET_ORDER
-        );
-
-        foreach ($matches as $match) {
-            $records[] = [
-                'employee_id' => $match[1],
-                'name' => '',
-                'date' => $this->normalizeDate($match[2]),
-                'time_in' => $this->normalizeTime($match[3]),
-                'time_out' => $this->normalizeTime($match[4]),
-            ];
-        }
-
-        return $records;
-    }
-
-    private function normalizeDate(string $date): string
-    {
-        $date = trim($date);
-        $formats = ['Y-m-d', 'm/d/Y', 'd/m/Y', 'm-d-Y', 'd-m-Y', 'm/d/y', 'd/m/y'];
-
-        foreach ($formats as $format) {
-            try {
-                $parsed = Carbon::createFromFormat($format, $date);
-                if ($parsed) {
-                    return $parsed->format('Y-m-d');
-                }
-            } catch (\Throwable $e) {
-                continue;
-            }
-        }
-
-        return Carbon::parse($date)->format('Y-m-d');
-    }
-
-    private function normalizeTime(string $time): string
-    {
-        $time = trim($time);
-
-        if (preg_match('/(\d{1,2}):(\d{2})\s*(AM|PM)/i', $time, $matches)) {
-            $hour = (int) $matches[1];
-            $minute = $matches[2];
-            $period = strtoupper($matches[3]);
-
-            if ($period === 'PM' && $hour !== 12) {
-                $hour += 12;
-            } elseif ($period === 'AM' && $hour === 12) {
-                $hour = 0;
-            }
-
-            return sprintf('%02d:%s', $hour, $minute);
-        }
-
-        return $time;
     }
 
     private function buildAttendanceRows(?Employee $employee, ?Carbon $selectedDate = null): Collection
@@ -1771,9 +1453,7 @@ class OperationsController extends Controller
 
     public function uploadLeaves(Request $request, LeaveMonitoringService $leaveMonitoringService): RedirectResponse
     {
-        @set_time_limit(180);
-
-        $validated = $request->validate([
+        $request->validate([
             'leaves_file' => ['required', 'file', 'mimes:xlsx,xls', 'max:10240'],
         ], [
             'leaves_file.required' => 'Please choose an Excel file first.',
@@ -1781,216 +1461,8 @@ class OperationsController extends Controller
             'leaves_file.max' => 'The file is too large. Maximum allowed is 10 MB.',
         ]);
 
-        /** @var \Illuminate\Http\UploadedFile $file */
-        $file = $validated['leaves_file'];
-
-        try {
-            $spreadsheet = SpreadsheetIOFactory::load($file->getRealPath());
-            $sheet = $spreadsheet->getActiveSheet();
-            $rows = $sheet->toArray(null, true, true, false);
-        } catch (\Throwable $exception) {
-            $this->logAudit('CREATE', 'Leave Management', 'Failed to read leave Excel file.', 'Failed');
-
-            return back()->with('error', 'Unable to read the Excel file: '.$exception->getMessage());
-        }
-
-        if (empty($rows) || count($rows) < 2) {
-            $this->logAudit('CREATE', 'Leave Management', 'Failed to import leave file. No data rows were found.', 'Failed');
-
-            return back()->with('error', 'The Excel file does not contain any data rows.');
-        }
-
-        $header = array_map(
-            fn ($cell) => strtolower(trim((string) $cell)),
-            $rows[0]
-        );
-        $dataRows = array_slice($rows, 1);
-
-        $columnIndex = $this->resolveLeaveColumns($header);
-        $missingColumns = array_keys(array_filter($columnIndex, fn ($idx) => $idx === null));
-
-        if (! empty($missingColumns)) {
-            $this->logAudit('CREATE', 'Leave Management', 'Failed to import leave file. Expected columns were missing.', 'Failed', [
-                'missing_columns' => $missingColumns,
-            ]);
-
-            return back()->with('error', 'Missing expected column(s) in the Excel header: '.implode(', ', $missingColumns).'. Expected headers: Leave ID, Employee ID, Employee Name, Application, Type, Date Filed, Date From, Date To, Total Hours, Status.');
-        }
-
-        // ------------------------------------------------------------------
-        // PERFORMANCE FIX: Pre-load ALL employees into memory once.
-        // Also build a normalized ID map for flexible matching.
-        // ------------------------------------------------------------------
-        $allEmployees = Employee::all();
-        $byExactId = $allEmployees->keyBy('employee_id');
-        $byNormalizedId = [];
-        $byNameIndex = [];
-        $employeeUserIdsByEmail = User::query()
-            ->whereIn('email', $allEmployees->pluck('email')->filter()->unique()->values())
-            ->pluck('id', 'email');
-
-        foreach ($allEmployees as $emp) {
-            $byNormalizedId[$this->normalizeEmployeeId($emp->employee_id)] = $emp;
-            $lastKey = mb_strtolower(trim((string) $emp->last_name));
-            $byNameIndex[$lastKey][] = $emp;
-        }
-
-        $imported = 0;
-        $updated = 0;
-        $skipped = 0;
-        $attendanceFulfilled = 0;
-        $wfhNotifications = 0;
-        $unmatched = [];
-        $applied = [];
-        $queuedAttendanceRows = [];
-        $queuedWfhRequests = [];
-
-        foreach ($dataRows as $rowNumber => $row) {
-            if (empty(array_filter($row, fn ($v) => $v !== null && $v !== ''))) {
-                continue;
-            }
-
-            $employeeCode = trim((string) ($row[$columnIndex['employee_id']] ?? ''));
-            $employeeName = trim((string) ($row[$columnIndex['employee_name']] ?? ''));
-
-            if ($employeeCode === '' && $employeeName === '') {
-                $skipped++;
-                continue;
-            }
-
-            // Try ID-based match first, then name fallback for robustness.
-            $employee = $this->findEmployeeInMemory(
-                [
-                    'employee_id' => $employeeCode,
-                    'name' => $employeeName,
-                ],
-                $byExactId,
-                $byNormalizedId,
-                $byNameIndex,
-            );
-
-            if (! $employee) {
-                $skipped++;
-                $unmatched[trim($employeeName.' ('.$employeeCode.')', ' ()')] = true;
-                continue;
-            }
-
-            $startDate = $this->parseExcelDate($row[$columnIndex['date_from']] ?? null);
-            $endDate = $this->parseExcelDate($row[$columnIndex['date_to']] ?? null) ?? $startDate;
-            $dateFiled = $this->parseExcelDate($row[$columnIndex['date_filed']] ?? null);
-
-            if (! $startDate) {
-                $skipped++;
-                continue;
-            }
-
-            $totalHours = (float) ($row[$columnIndex['total_hours']] ?? 0);
-            $daysDeducted = $totalHours > 0 ? round($totalHours / 8, 2) : 0;
-
-            $leaveType = trim((string) ($row[$columnIndex['application']] ?? 'Leave'));
-            $category = trim((string) ($row[$columnIndex['type']] ?? ''));
-
-            $statusRaw = strtoupper(trim((string) ($row[$columnIndex['status']] ?? '')));
-            $status = match (true) {
-                str_contains($statusRaw, 'APPROVED') && ! str_contains($statusRaw, 'DIS') => 'approved',
-                str_contains($statusRaw, 'DIS') || str_contains($statusRaw, 'CANCEL') || str_contains($statusRaw, 'REJECT') => 'rejected',
-                default => 'pending',
-            };
-
-            $policy = $leaveMonitoringService->resolvePolicy($leaveType, $category);
-            $referenceDate = Carbon::parse($startDate);
-            $isEligible = $leaveMonitoringService->isEligibleForPolicy($employee, $policy, $referenceDate);
-            $isTrackedLeaveType = in_array($policy['storage_leave_type'], ['Vacation Leave', 'Sick Leave', 'Emergency Leave'], true);
-            $shouldTrackInLeaveModule = $policy['track_in_leave_module'] && ($isEligible || $isTrackedLeaveType);
-
-            $reasonParts = array_filter([$category, $statusRaw ? 'Source status: '.$statusRaw : null]);
-
-            $attributes = [
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'leave_type' => $policy['storage_leave_type'],
-                'days_deducted' => $daysDeducted,
-                'status' => $status,
-                'cutoff_date' => $dateFiled,
-                'reason' => $reasonParts ? implode(' · ', $reasonParts) : null,
-            ];
-
-            $existing = LeaveRequest::query()
-                ->where('employee_id', $employee->id)
-                ->whereDate('start_date', $startDate)
-                ->whereIn('leave_type', array_values(array_unique([$leaveType, $policy['storage_leave_type']])))
-                ->first();
-
-            if ($shouldTrackInLeaveModule) {
-                if ($existing) {
-                    $existing->update($attributes);
-                    $updated++;
-                } else {
-                    LeaveRequest::create(array_merge(['employee_id' => $employee->id], $attributes));
-                    $imported++;
-                }
-            } elseif ($existing) {
-                $existing->delete();
-            }
-
-            if ($status === 'approved' && $isEligible && $policy['auto_mark_present']) {
-                $this->queueAutoPresentAttendance(
-                    $queuedAttendanceRows,
-                    $employee,
-                    Carbon::parse($startDate),
-                    Carbon::parse($endDate),
-                    $policy['label']
-                );
-            }
-
-            if ($status === 'approved' && $isEligible && $policy['requires_wfh_submission']) {
-                $this->queueWfhUploadRequiredNotification(
-                    $queuedWfhRequests,
-                    $employee,
-                    Carbon::parse($startDate),
-                    Carbon::parse($endDate),
-                    $policy['label']
-                );
-            }
-
-            $applied[$employee->full_name . ' (' . $employee->employee_id . ')'] = true;
-        }
-
-        $attendanceFulfilled = $this->insertQueuedAttendanceRows($queuedAttendanceRows);
-        $wfhNotifications = $this->sendQueuedWfhUploadRequiredNotifications(
-            $request,
-            $queuedWfhRequests,
-            $employeeUserIdsByEmail
-        );
-
-        $message = "Leave file processed — {$imported} new, {$updated} updated";
-        if ($skipped > 0) {
-            $message .= ", {$skipped} skipped";
-        }
-        if ($attendanceFulfilled > 0) {
-            $message .= ", {$attendanceFulfilled} attendance day(s) auto-fulfilled";
-        }
-        if ($wfhNotifications > 0) {
-            $message .= ", {$wfhNotifications} WFH notification(s) sent";
-        }
-        $message .= '.';
-
-        $this->logAudit('CREATE', 'Leave Management', $message, 'Success', [
-            'original_filename' => $file->getClientOriginalName(),
-            'imported' => $imported,
-            'updated' => $updated,
-            'skipped' => $skipped,
-        ]);
-
-        return back()
-            ->with('success', $message)
-            ->with('unmatched_employees', array_keys($unmatched))
-            ->with('applied_employees', array_keys($applied))
-            ->with('import_stats', [
-                'imported' => $imported + $updated,
-                'skipped' => $skipped,
-                'total_records' => count($dataRows),
-            ]);
+        // Admin and HR share one leave import so the same file always gives the same result.
+        return app(HrOperationsController::class)->processLeaveUpload($request, $leaveMonitoringService);
     }
 
     public function clearLeaveFileCache(): RedirectResponse
@@ -2022,276 +1494,23 @@ class OperationsController extends Controller
 
     private function normalizeEmployeeId(string $id): string
     {
-        $normalized = preg_replace('/[^A-Za-z0-9]/', '', trim($id)) ?? '';
-
-        if (preg_match('/^\d+\.0+$/', $normalized)) {
-            $normalized = strstr($normalized, '.', true) ?: $normalized;
-        }
-
-        return $normalized;
+        return Employee::normalizeEmployeeId($id);
     }
 
-    private function resolveLeaveColumns(array $header): array
+    /**
+     * Extraction details shown after a biometric upload: which PDF layout was
+     * recognised, how many pages and rows were read, and how long it took.
+     *
+     * @return array{format:string, pages:int, rows_extracted:int, extraction_seconds:float}
+     */
+    private function extractionStats(array $extraction): array
     {
-        $find = function (array $candidates) use ($header): ?int {
-            foreach ($header as $idx => $label) {
-                if (in_array($label, $candidates, true)) {
-                    return $idx;
-                }
-            }
-
-            return null;
-        };
-
         return [
-            'employee_id' => $find(['employee id', 'employee_id', 'emp id']),
-            'employee_name' => $find(['employee name', 'employee_name', 'name']),
-            'application' => $find(['application', 'application type', 'leave type']),
-            'type' => $find(['type', 'category']),
-            'date_filed' => $find(['date filed', 'filed', 'filed_on']),
-            'date_from' => $find(['date from', 'from', 'start date', 'start_date']),
-            'date_to' => $find(['date to', 'to', 'end date', 'end_date']),
-            'total_hours' => $find(['total hours', 'hours']),
-            'status' => $find(['status']),
+            'format' => $extraction['format_label'],
+            'pages' => $extraction['pages'],
+            'rows_extracted' => count($extraction['records']),
+            'extraction_seconds' => $extraction['seconds'],
         ];
-    }
-
-    private function parseExcelDate(mixed $value): ?string
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        if (is_numeric($value)) {
-            try {
-                $datetime = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value);
-
-                return $datetime->format('Y-m-d');
-            } catch (\Throwable) {
-                return null;
-            }
-        }
-
-        try {
-            return Carbon::parse((string) $value)->toDateString();
-        } catch (\Throwable) {
-            return null;
-        }
-    }
-
-    /**
-     * @param array<string, array<string, mixed>> $queuedAttendanceRows
-     */
-    private function queueAutoPresentAttendance(array &$queuedAttendanceRows, Employee $employee, Carbon $startDate, Carbon $endDate, string $leaveLabel): void
-    {
-        $periodStart = $startDate->copy()->startOfDay();
-        $periodEnd = $endDate->copy()->startOfDay();
-
-        if ($periodEnd->lt($periodStart)) {
-            $periodEnd = $periodStart->copy();
-        }
-
-        foreach (CarbonPeriod::create($periodStart, $periodEnd) as $date) {
-            $recordDate = $date->toDateString();
-            $key = $employee->id.'|'.$recordDate;
-
-            if (isset($queuedAttendanceRows[$key])) {
-                continue;
-            }
-
-            $queuedAttendanceRows[$key] = [
-                'employee_id' => $employee->id,
-                'record_date' => $recordDate,
-                'time_in' => null,
-                'time_out' => null,
-                'scheduled_time_in' => null,
-                'scheduled_time_out' => null,
-                'tardiness_minutes' => 0,
-                'undertime_minutes' => 0,
-                'overtime_minutes' => 0,
-                'schedule_status' => 'validated',
-                'schedule_notes' => 'Auto-fulfilled from approved leave: '.$leaveLabel,
-                'status' => 'present',
-            ];
-        }
-    }
-
-    /**
-     * @param array<string, array<string, mixed>> $queuedAttendanceRows
-     */
-    private function insertQueuedAttendanceRows(array $queuedAttendanceRows): int
-    {
-        if (empty($queuedAttendanceRows)) {
-            return 0;
-        }
-
-        $rows = array_values($queuedAttendanceRows);
-        $employeeIds = array_values(array_unique(array_map(fn ($row) => (int) $row['employee_id'], $rows)));
-        $recordDates = array_values(array_map(fn ($row) => (string) $row['record_date'], $rows));
-        $minDate = min($recordDates);
-        $maxDate = max($recordDates);
-
-        $existingKeys = AttendanceRecord::query()
-            ->select(['employee_id', 'record_date'])
-            ->whereIn('employee_id', $employeeIds)
-            ->whereBetween('record_date', [$minDate, $maxDate])
-            ->get()
-            ->mapWithKeys(fn (AttendanceRecord $record) => [
-                $record->employee_id.'|'.Carbon::parse($record->record_date)->toDateString() => true,
-            ]);
-
-        $now = now();
-        $toInsert = [];
-
-        foreach ($rows as $row) {
-            $key = $row['employee_id'].'|'.$row['record_date'];
-            if ($existingKeys->has($key)) {
-                continue;
-            }
-
-            $row['created_at'] = $now;
-            $row['updated_at'] = $now;
-            $toInsert[] = $row;
-        }
-
-        if (empty($toInsert)) {
-            return 0;
-        }
-
-        foreach (array_chunk($toInsert, 500) as $chunk) {
-            AttendanceRecord::insert($chunk);
-        }
-
-        return count($toInsert);
-    }
-
-    /**
-     * @param array<int, array{employee:Employee,ranges:array<string, array{start:Carbon,end:Carbon,label:string}>}> $queuedWfhRequests
-     */
-    private function queueWfhUploadRequiredNotification(array &$queuedWfhRequests, Employee $employee, Carbon $startDate, Carbon $endDate, string $leaveLabel): void
-    {
-        if (! isset($queuedWfhRequests[$employee->id])) {
-            $queuedWfhRequests[$employee->id] = [
-                'employee' => $employee,
-                'ranges' => [],
-            ];
-        }
-
-        $rangeKey = $startDate->toDateString().'|'.$endDate->toDateString().'|'.$leaveLabel;
-        $queuedWfhRequests[$employee->id]['ranges'][$rangeKey] = [
-            'start' => $startDate->copy()->startOfDay(),
-            'end' => $endDate->copy()->startOfDay(),
-            'label' => $leaveLabel,
-        ];
-    }
-
-    /**
-     * @param array<int, array{employee:Employee,ranges:array<string, array{start:Carbon,end:Carbon,label:string}>}> $queuedWfhRequests
-     */
-    private function sendQueuedWfhUploadRequiredNotifications(Request $request, array $queuedWfhRequests, Collection $employeeUserIdsByEmail): int
-    {
-        if (empty($queuedWfhRequests)) {
-            return 0;
-        }
-
-        $createdNotifications = 0;
-
-        foreach ($queuedWfhRequests as $payload) {
-            $employee = $payload['employee'];
-            $employeeEmail = (string) $employee->email;
-
-            if ($employeeEmail === '' || ! $employeeUserIdsByEmail->has($employeeEmail)) {
-                continue;
-            }
-
-            $ranges = collect($payload['ranges'])->values();
-
-            if ($ranges->isEmpty()) {
-                continue;
-            }
-
-            /** @var Carbon $minStart */
-            $minStart = $ranges->min(fn (array $range) => $range['start']);
-            /** @var Carbon $maxEnd */
-            $maxEnd = $ranges->max(fn (array $range) => $range['end']);
-
-            $existingWfhDates = WfhMonitoringSubmission::query()
-                ->where('employee_id', $employee->id)
-                ->whereBetween('wfh_date', [$minStart->toDateString(), $maxEnd->toDateString()])
-                ->pluck('wfh_date')
-                ->map(fn ($date) => Carbon::parse($date)->toDateString())
-                ->flip();
-
-            $missingDatesByLabel = [];
-
-            foreach ($ranges as $range) {
-                /** @var Carbon $start */
-                $start = $range['start'];
-                /** @var Carbon $end */
-                $end = $range['end'];
-                /** @var string $label */
-                $label = $range['label'];
-
-                foreach (CarbonPeriod::create($start->copy()->startOfDay(), $end->copy()->startOfDay()) as $date) {
-                    $dateKey = $date->toDateString();
-
-                    if ($existingWfhDates->has($dateKey)) {
-                        continue;
-                    }
-
-                    $missingDatesByLabel[$label][$dateKey] = true;
-                }
-            }
-
-            if (empty($missingDatesByLabel)) {
-                continue;
-            }
-
-            $rangeLabels = collect($missingDatesByLabel)
-                ->map(function (array $dates, string $label) {
-                    $dateValues = collect(array_keys($dates))
-                        ->sort()
-                        ->values();
-
-                    $dateLabel = $dateValues->count() === 1
-                        ? Carbon::parse($dateValues->first())->format('F d, Y')
-                        : Carbon::parse($dateValues->first())->format('F d, Y')
-                            .' to '.Carbon::parse($dateValues->last())->format('F d, Y');
-
-                    return $label.' ('.$dateLabel.')';
-                })
-                ->values()
-                ->all();
-
-            $content = 'Your approved Work From Home leave requires WFH materials. ';
-            $content .= 'Please upload your WFH monitoring sheet so HR can review and finalize your attendance as Present.';
-
-            if (! empty($rangeLabels)) {
-                $content .= ' Affected request(s): '.implode('; ', $rangeLabels).'.';
-            }
-
-            $announcement = Announcement::forceCreate([
-                'title' => 'WFH Action Required',
-                'content' => $content,
-                'priority' => 'high',
-                'target_employee_type' => 'employee',
-                'published_at' => now(),
-                'is_published' => true,
-                'created_by' => $request->user()?->id,
-            ]);
-
-            AnnouncementNotification::create([
-                'announcement_id' => $announcement->id,
-                'user_id' => (int) $employeeUserIdsByEmail->get($employeeEmail),
-                'is_read' => false,
-                'read_at' => null,
-                'redirect_url' => route('employee.wfh-monitoring.upload'),
-            ]);
-
-            $createdNotifications++;
-        }
-
-        return $createdNotifications;
     }
 
     /**
@@ -2305,54 +1524,6 @@ class OperationsController extends Controller
         array $byNormalizedId,
         array $byNameIndex
     ): ?Employee {
-        if (! empty($record['employee_id'])) {
-            $exactId = trim($record['employee_id']);
-            if ($byExactId->has($exactId)) {
-                return $byExactId->get($exactId);
-            }
-
-            $normalizedId = $this->normalizeEmployeeId($exactId);
-            if (isset($byNormalizedId[$normalizedId])) {
-                return $byNormalizedId[$normalizedId];
-            }
-        }
-
-        if (empty($record['name'])) {
-            return null;
-        }
-
-        $name = trim($record['name']);
-
-        if (str_contains($name, ',')) {
-            [$last, $first] = array_map('trim', explode(',', $name, 2));
-            $firstWord = trim(explode(' ', $first)[0] ?? $first);
-            $lastKey = mb_strtolower($last);
-
-            if (! isset($byNameIndex[$lastKey])) {
-                return null;
-            }
-
-            foreach ($byNameIndex[$lastKey] as $emp) {
-                if (str_starts_with(mb_strtolower($emp->first_name), mb_strtolower($firstWord))) {
-                    return $emp;
-                }
-            }
-        } else {
-            $parts = preg_split('/\s+/', $name);
-            if (count($parts) >= 2) {
-                $firstName = mb_strtolower($parts[0]);
-                $lastName = mb_strtolower(end($parts));
-
-                if (isset($byNameIndex[$lastName])) {
-                    foreach ($byNameIndex[$lastName] as $emp) {
-                        if (mb_strtolower($emp->first_name) === $firstName) {
-                            return $emp;
-                        }
-                    }
-                }
-            }
-        }
-
-        return null;
+        return EmployeeRecordMatcher::find($record, $byExactId, $byNormalizedId, $byNameIndex);
     }
 }

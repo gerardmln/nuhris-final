@@ -14,6 +14,9 @@ use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
 use App\Models\User;
 use App\Models\WfhMonitoringSubmission;
+use App\Services\BiometricPdfParser;
+use App\Services\EmployeeRecordMatcher;
+use App\Services\ImportVerificationService;
 use App\Services\EmployeeScheduleService;
 use App\Services\LeaveMonitoringService;
 use App\Services\LeaveBalanceService;
@@ -22,12 +25,12 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory as SpreadsheetIOFactory;
-use Smalot\PdfParser\Parser as PdfParser;
 
 class OperationsController extends Controller
 {
@@ -855,14 +858,7 @@ class OperationsController extends Controller
      */
     private function normalizeEmployeeId(string $id): string
     {
-        $normalized = preg_replace('/[^A-Za-z0-9]/', '', trim($id)) ?? '';
-
-        // Handle Excel numeric IDs that may come as 238066.0 after casting.
-        if (preg_match('/^\d+\.0+$/', $normalized)) {
-            $normalized = strstr($normalized, '.', true) ?: $normalized;
-        }
-
-        return $normalized;
+        return Employee::normalizeEmployeeId($id);
     }
 
     public function uploadBiometrics(Request $request, EmployeeScheduleService $scheduleService): RedirectResponse
@@ -880,11 +876,8 @@ class OperationsController extends Controller
         $file = $validated['biometrics_file'];
 
         try {
-            $parser = new PdfParser();
-            $pdf = $parser->parseFile($file->getRealPath());
-            $text = $pdf->getText();
-
-            $records = $this->parseBiometricText($text);
+            $extraction = app(BiometricPdfParser::class)->parseFile($file->getRealPath());
+            $records = $extraction['records'];
 
             if (empty($records)) {
                 return back()->with('error', 'No attendance rows were detected in the PDF. Upload a supported biometric Timesheet Report or Civil Service Form 48 Daily Time Record.');
@@ -1007,6 +1000,7 @@ class OperationsController extends Controller
                 'original_filename' => $file->getClientOriginalName(),
                 'imported' => $imported,
                 'skipped' => $skipped,
+                ...$this->extractionStats($extraction),
             ]);
 
             return back()
@@ -1017,11 +1011,28 @@ class OperationsController extends Controller
                     'imported' => $imported,
                     'skipped' => $skipped,
                     'total_records' => count($records),
+                    ...$this->extractionStats($extraction),
                 ]);
 
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to parse PDF: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Extraction details shown after a biometric upload: which PDF layout was
+     * recognised, how many pages and rows were read, and how long it took.
+     *
+     * @return array{format:string, pages:int, rows_extracted:int, extraction_seconds:float}
+     */
+    private function extractionStats(array $extraction): array
+    {
+        return [
+            'format' => $extraction['format_label'],
+            'pages' => $extraction['pages'],
+            'rows_extracted' => count($extraction['records']),
+            'extraction_seconds' => $extraction['seconds'],
+        ];
     }
 
     /**
@@ -1037,58 +1048,7 @@ class OperationsController extends Controller
         array $byNormalizedId,
         array $byNameIndex
     ): ?Employee {
-        // 1. Exact ID match
-        if (! empty($record['employee_id'])) {
-            $exactId = trim($record['employee_id']);
-            if ($byExactId->has($exactId)) {
-                return $byExactId->get($exactId);
-            }
-
-            // 2. Normalized ID match (strip dashes)
-            $normalizedId = $this->normalizeEmployeeId($exactId);
-            if (isset($byNormalizedId[$normalizedId])) {
-                return $byNormalizedId[$normalizedId];
-            }
-        }
-
-        // 3. Name-based fallback
-        if (empty($record['name'])) {
-            return null;
-        }
-
-        $name = trim($record['name']);
-
-        if (str_contains($name, ',')) {
-            [$last, $first] = array_map('trim', explode(',', $name, 2));
-            $firstWord = trim(explode(' ', $first)[0] ?? $first);
-            $lastKey = mb_strtolower($last);
-
-            if (! isset($byNameIndex[$lastKey])) {
-                return null;
-            }
-
-            foreach ($byNameIndex[$lastKey] as $emp) {
-                if (str_starts_with(mb_strtolower($emp->first_name), mb_strtolower($firstWord))) {
-                    return $emp;
-                }
-            }
-        } else {
-            $parts = preg_split('/\s+/', $name);
-            if (count($parts) >= 2) {
-                $firstName = mb_strtolower($parts[0]);
-                $lastName = mb_strtolower(end($parts));
-
-                if (isset($byNameIndex[$lastName])) {
-                    foreach ($byNameIndex[$lastName] as $emp) {
-                        if (mb_strtolower($emp->first_name) === $firstName) {
-                            return $emp;
-                        }
-                    }
-                }
-            }
-        }
-
-        return null;
+        return EmployeeRecordMatcher::find($record, $byExactId, $byNormalizedId, $byNameIndex);
     }
 
     /**
@@ -1400,11 +1360,14 @@ class OperationsController extends Controller
         }
         $message .= '.';
 
+        $verification = app(ImportVerificationService::class)->verifyLeaveImport($file, $leaveMonitoringService);
+
         app(\App\Services\AuditLogService::class)->record('CREATE', 'Leave Management', $message, 'Success', [
             'original_filename' => $file->getClientOriginalName(),
             'imported' => $imported,
             'updated' => $updated,
             'skipped' => $skipped,
+            'verification' => Arr::except($verification, 'mismatches'),
         ]);
 
         return back()
@@ -1415,7 +1378,8 @@ class OperationsController extends Controller
                 'imported' => $imported + $updated,
                 'skipped' => $skipped,
                 'total_records' => count($dataRows),
-            ]);
+            ])
+            ->with('import_verification', $verification);
     }
 
     /**
@@ -1798,346 +1762,6 @@ class OperationsController extends Controller
         } catch (\Throwable $e) {
             return null;
         }
-    }
-
-    /**
-     * Parse biometric text extracted from PDF into structured records.
-     */
-    private function parseBiometricText(string $text): array
-    {
-        $records = [];
-        $lines = preg_split('/\r?\n/', $text);
-        $lines = array_map('trim', $lines);
-        $lines = array_filter($lines, fn($l) => $l !== '');
-        $lines = array_values($lines);
-
-        $records = $this->parseCivilServiceDtrFormat($lines);
-
-        if (empty($records)) {
-            $records = $this->parseNuLipaFormat($lines);
-        }
-
-        if (empty($records)) {
-            $records = $this->parseTabularFormat($lines);
-        }
-
-        if (empty($records)) {
-            $records = $this->parseBlockFormat($lines);
-        }
-
-        if (empty($records)) {
-            $records = $this->parseGenericFormat($text);
-        }
-
-        return $records;
-    }
-
-    /**
-     * Parse Civil Service Form No. 48 / Daily Time Record exports.
-     *
-     * These PDFs identify an employee in the page header and use only the
-     * day number in each attendance row, so the month and year come from the
-     * "For the month of" header.
-     */
-    private function parseCivilServiceDtrFormat(array $lines): array
-    {
-        $records = [];
-        $employeeName = null;
-        $nameCandidate = null;
-        $month = null;
-        $year = null;
-        $seen = [];
-
-        foreach ($lines as $line) {
-            if (preg_match('/^[A-Za-z][A-Za-z\' .-]+,\s*[A-Za-z][A-Za-z\' .-]+$/', $line)) {
-                $nameCandidate = $line;
-            }
-
-            if (strcasecmp($line, 'For the month of') === 0) {
-                $employeeName = $nameCandidate;
-                continue;
-            }
-
-            if (preg_match('/^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})$/i', $line, $matches)) {
-                $month = Carbon::parse($matches[1])->month;
-                $year = (int) $matches[2];
-                continue;
-            }
-
-            if (! $employeeName || ! $month || ! $year) {
-                continue;
-            }
-
-            if (! preg_match('/(?:am|pm)\s*(?:\d{1,2}:\d{2}\s*(?:am|pm)\s*)*([1-9]|[12]\d|3[01])(?:\s|$)/i', $line, $dayMatch, PREG_OFFSET_CAPTURE)) {
-                continue;
-            }
-
-            $day = (int) $dayMatch[1][0];
-            $rowPrefix = substr($line, 0, (int) $dayMatch[1][1]);
-            preg_match_all('/\d{1,2}:\d{2}\s*(?:am|pm)/i', $rowPrefix, $timeMatches);
-
-            if (empty($timeMatches[0])) {
-                continue;
-            }
-
-            try {
-                $date = Carbon::createFromDate($year, $month, $day)->toDateString();
-            } catch (\Throwable) {
-                continue;
-            }
-
-            $times = $timeMatches[0];
-            usort($times, fn (string $a, string $b): int => strtotime($this->normalizeTime($a)) <=> strtotime($this->normalizeTime($b)));
-            $key = $employeeName.'|'.$date;
-
-            if (isset($seen[$key])) {
-                continue;
-            }
-
-            $seen[$key] = true;
-            $records[] = [
-                'employee_id' => '',
-                'name' => $employeeName,
-                'date' => $date,
-                'time_in' => $this->normalizeTime($times[0]),
-                'time_out' => count($times) > 1 ? $this->normalizeTime(end($times)) : null,
-            ];
-        }
-
-        return $records;
-    }
-
-    /**
-     * Parser for the NU LIPA / Mustard Seed "TIMESHEET REPORT" biometric PDF.
-     * Supports classic date-first rows and "Actual Break and Hours Worked"
-     * exports where PDF text puts totals first and the date at the end.
-     */
-    private function parseNuLipaFormat(array $lines): array
-    {
-        $records = [];
-        $currentEmployee = null;
-
-        foreach ($lines as $line) {
-            if (preg_match('/^Employee:\s*(.+?)\s*\(([^)]+)\)\s*$/i', $line, $m)) {
-                $currentEmployee = [
-                    'id' => trim($m[2]),
-                    'name' => trim($m[1]),
-                ];
-                continue;
-            }
-
-            if (! $currentEmployee) {
-                continue;
-            }
-
-            if (preg_match('/^(Total:|Days\s+Present|Days\s+Absent)/i', $line)) {
-                continue;
-            }
-
-            $date = null;
-            $rest = null;
-
-            // Classic Timesheet Report: "04/07/2026 7:21 am 7:41 pm ..."
-            if (preg_match('#^(\d{1,2}/\d{1,2}/\d{4})\s+(.+)$#', $line, $m)) {
-                $date = $m[1];
-                $rest = $m[2];
-            }
-            // Actual Break and Hours Worked: "...12:38 pm 8:51 am08/01/2026"
-            elseif (preg_match('#^(.+?)(\d{1,2}/\d{1,2}/\d{4})\s*$#', $line, $m)) {
-                $rest = $m[1];
-                $date = $m[2];
-            } else {
-                continue;
-            }
-
-            if (! preg_match_all('/\d{1,2}:\d{2}\s*(?:am|pm)/i', $rest, $timeMatches)) {
-                continue;
-            }
-
-            $times = $timeMatches[0];
-            // Text extraction may list Out before In; use earliest/latest punches.
-            usort($times, function (string $a, string $b): int {
-                return strtotime($this->normalizeTime($a)) <=> strtotime($this->normalizeTime($b));
-            });
-
-            $timeIn = $times[0] ?? null;
-            $timeOut = count($times) > 1 ? end($times) : null;
-
-            $records[] = [
-                'employee_id' => $currentEmployee['id'],
-                'name' => $currentEmployee['name'],
-                'date' => $this->normalizeDate($date),
-                'time_in' => $timeIn ? $this->normalizeTime($timeIn) : null,
-                'time_out' => $timeOut ? $this->normalizeTime($timeOut) : null,
-            ];
-        }
-
-        return $records;
-    }
-
-    /**
-     * Parse tabular biometric format.
-     */
-    private function parseTabularFormat(array $lines): array
-    {
-        $records = [];
-
-        foreach ($lines as $line) {
-            if (preg_match('/(\d{4}-\d{3})\s*[|\t]\s*(.+?)\s*[|\t]\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})\s*[|\t]\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)\s*[|\t]\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i', $line, $matches)) {
-                $records[] = [
-                    'employee_id' => $matches[1],
-                    'name' => trim($matches[2]),
-                    'date' => $this->normalizeDate($matches[3]),
-                    'time_in' => $this->normalizeTime($matches[4]),
-                    'time_out' => $this->normalizeTime($matches[5]),
-                ];
-                continue;
-            }
-
-            if (preg_match('/(\d{4}-\d{3})\s+([A-Za-z][A-Za-z\s,\.]+?)\s+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i', $line, $matches)) {
-                $records[] = [
-                    'employee_id' => $matches[1],
-                    'name' => trim($matches[2]),
-                    'date' => $this->normalizeDate($matches[3]),
-                    'time_in' => $this->normalizeTime($matches[4]),
-                    'time_out' => $this->normalizeTime($matches[5]),
-                ];
-                continue;
-            }
-
-            if (preg_match('/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i', $line, $matches)) {
-                if (!empty($this->currentParseEmployee)) {
-                    $records[] = [
-                        'employee_id' => $this->currentParseEmployee['id'],
-                        'name' => $this->currentParseEmployee['name'],
-                        'date' => $this->normalizeDate($matches[1]),
-                        'time_in' => $this->normalizeTime($matches[2]),
-                        'time_out' => $this->normalizeTime($matches[3]),
-                    ];
-                }
-            }
-
-            if (preg_match('/^(?:Employee|Emp|ID)?[:\s]*(\d{4}-\d{3})\s*[:\-\s]+\s*([A-Za-z][A-Za-z\s,\.]+)/i', $line, $matches)) {
-                $this->currentParseEmployee = [
-                    'id' => $matches[1],
-                    'name' => trim($matches[2]),
-                ];
-            }
-        }
-
-        return $records;
-    }
-
-    private ?array $currentParseEmployee = null;
-
-    /**
-     * Parse block format where each employee has a section with daily records.
-     */
-    private function parseBlockFormat(array $lines): array
-    {
-        $records = [];
-        $currentEmployee = null;
-
-        foreach ($lines as $line) {
-            if (preg_match('/(?:name|employee)\s*[:\-]\s*(?:(\d{4}-\d{3})\s*[:\-\s]*)?\s*([A-Za-z][A-Za-z\s,\.]+)/i', $line, $matches)) {
-                $currentEmployee = [
-                    'id' => $matches[1] ?: '',
-                    'name' => trim($matches[2]),
-                ];
-                continue;
-            }
-
-            if ($currentEmployee && empty($currentEmployee['id']) && preg_match('/(?:id|emp[_\s]?id)\s*[:\-]\s*(\d{4}-\d{3})/i', $line, $matches)) {
-                $currentEmployee['id'] = $matches[1];
-                continue;
-            }
-
-            if ($currentEmployee && preg_match('/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i', $line, $matches)) {
-                $records[] = [
-                    'employee_id' => $currentEmployee['id'],
-                    'name' => $currentEmployee['name'],
-                    'date' => $this->normalizeDate($matches[1]),
-                    'time_in' => $this->normalizeTime($matches[2]),
-                    'time_out' => $this->normalizeTime($matches[3]),
-                ];
-            }
-        }
-
-        return $records;
-    }
-
-    /**
-     * Generic fallback parser.
-     */
-    private function parseGenericFormat(string $text): array
-    {
-        $records = [];
-
-        preg_match_all(
-            '/(\d{4}-\d{3}).*?(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)/is',
-            $text,
-            $matches,
-            PREG_SET_ORDER
-        );
-
-        foreach ($matches as $match) {
-            $records[] = [
-                'employee_id' => $match[1],
-                'name' => '',
-                'date' => $this->normalizeDate($match[2]),
-                'time_in' => $this->normalizeTime($match[3]),
-                'time_out' => $this->normalizeTime($match[4]),
-            ];
-        }
-
-        return $records;
-    }
-
-    /**
-     * Normalize various date formats to Y-m-d.
-     */
-    private function normalizeDate(string $date): string
-    {
-        $date = trim($date);
-
-        $formats = ['Y-m-d', 'm/d/Y', 'd/m/Y', 'm-d-Y', 'd-m-Y', 'm/d/y', 'd/m/y'];
-
-        foreach ($formats as $format) {
-            try {
-                $parsed = Carbon::createFromFormat($format, $date);
-                if ($parsed) {
-                    return $parsed->format('Y-m-d');
-                }
-            } catch (\Exception $e) {
-                continue;
-            }
-        }
-
-        return Carbon::parse($date)->format('Y-m-d');
-    }
-
-    /**
-     * Normalize time to 24-hour format.
-     */
-    private function normalizeTime(string $time): string
-    {
-        $time = trim($time);
-
-        if (preg_match('/(\d{1,2}):(\d{2})\s*(AM|PM)/i', $time, $m)) {
-            $h = (int) $m[1];
-            $min = $m[2];
-            $period = strtoupper($m[3]);
-
-            if ($period === 'PM' && $h !== 12) {
-                $h += 12;
-            } elseif ($period === 'AM' && $h === 12) {
-                $h = 0;
-            }
-
-            return sprintf('%02d:%s', $h, $min);
-        }
-
-        return $time;
     }
 
     private function normalizeAttendanceRange(string $attendanceRange): string

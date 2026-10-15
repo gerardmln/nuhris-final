@@ -14,7 +14,7 @@
                 <span class="whitespace-nowrap">Latest uploaded file:</span>
                 <select class="min-w-0 truncate rounded-md border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700" aria-label="Latest uploaded leave files">
                     @forelse ($latestLeaveUploads as $upload)
-                        <option>{{ $upload->metadata['original_filename'] }} ({{ $upload->created_at->format('M j, Y g:i A') }})</option>
+                        <option>{{ $upload->metadata['original_filename'] }} ({{ $upload->created_at->format('M j, Y g:i A') }}){{ isset($upload->metadata['verification']['field_accuracy']) ? ' · '.$upload->metadata['verification']['field_accuracy'].'% verified' : '' }}</option>
                     @empty
                         <option>No uploaded leave files</option>
                     @endforelse
@@ -46,6 +46,7 @@
                         <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-center"><p class="text-3xl font-extrabold text-amber-700">{{ $importStats['skipped'] ?? 0 }}</p><p class="text-xs font-semibold text-amber-700">Skipped</p></div>
                         <div class="rounded-lg bg-blue-50 border border-blue-200 p-3 text-center"><p class="text-3xl font-extrabold text-blue-700">{{ $importStats['total_records'] ?? 0 }}</p><p class="text-xs font-semibold text-blue-700">Total Rows</p></div>
                     </div>
+                    @include('partials.import-verification', ['verification' => session('import_verification')])
                     @if (count($unmatchedList) > 0)
                         <div class="mb-4">
                             <h4 class="text-sm font-bold text-red-700 mb-2">Employees NOT Found in HRIS ({{ count($unmatchedList) }})</h4>

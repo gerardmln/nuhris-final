@@ -304,6 +304,17 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
         Route::get('/export-excel', [AdminOperationsController::class, 'exportDtrExcel'])->name('export-excel');
         Route::post('/upload', [AdminOperationsController::class, 'uploadDtr'])->name('upload');
         Route::post('/clear-cache', [AdminOperationsController::class, 'clearDtrCache'])->name('clear-cache');
+
+        // PDF extraction validation (accuracy vs. hand-encoded ground truth; never writes attendance)
+        Route::prefix('extraction-validation')->name('validation.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\ExtractionValidationController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Admin\ExtractionValidationController::class, 'store'])->name('store');
+            Route::get('/template', [\App\Http\Controllers\Admin\ExtractionValidationController::class, 'template'])->name('template');
+            Route::get('/report', [\App\Http\Controllers\Admin\ExtractionValidationController::class, 'summaryReport'])->name('summary-report');
+            Route::get('/{run}', [\App\Http\Controllers\Admin\ExtractionValidationController::class, 'show'])->whereNumber('run')->name('show');
+            Route::get('/{run}/report', [\App\Http\Controllers\Admin\ExtractionValidationController::class, 'report'])->whereNumber('run')->name('report');
+            Route::delete('/{run}', [\App\Http\Controllers\Admin\ExtractionValidationController::class, 'destroy'])->whereNumber('run')->name('destroy');
+        });
         Route::post('/clear-all', [AdminOperationsController::class, 'clearAllDtr'])->name('clear-all');
         Route::post('/employee/{employee}/clear', [AdminOperationsController::class, 'clearEmployeeDtr'])->whereNumber('employee')->name('clear-employee');
         Route::get('/{record}/edit', [AdminOperationsController::class, 'editDtrRecord'])->whereNumber('record')->name('edit');

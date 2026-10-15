@@ -6,9 +6,11 @@ use App\Jobs\ProvisionImportedEmployeeAccounts;
 use App\Models\AdminAuditLog;
 use App\Services\AuditLogService;
 use App\Services\EmployeeBulkImportService;
+use App\Services\ImportVerificationService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
@@ -49,6 +51,7 @@ trait HandlesEmployeeBulkUpload
         $failed = count($result['failed']);
 
         $message = "Bulk upload processed {$result['total_rows']} row(s): {$created} added, {$existing} already registered, {$failed} with errors.";
+        $verification = app(ImportVerificationService::class)->verifyEmployeeImport($file, $result['created']);
 
         app(AuditLogService::class)->record('CREATE', 'Employees', $message, 'Success', [
             'original_filename' => $originalFilename,
@@ -57,6 +60,7 @@ trait HandlesEmployeeBulkUpload
             'created' => $created,
             'existing' => $existing,
             'failed' => $failed,
+            'verification' => Arr::except($verification, 'mismatches'),
         ]);
 
         if ($result['created_employee_ids'] !== []) {
@@ -75,6 +79,7 @@ trait HandlesEmployeeBulkUpload
                 'created' => $result['created'],
                 'existing' => $result['existing'],
                 'failed' => $result['failed'],
+                'verification' => $verification,
             ]);
     }
 

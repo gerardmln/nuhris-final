@@ -2,16 +2,14 @@
 
 namespace Tests\Unit;
 
-use App\Http\Controllers\Admin\OperationsController as AdminOperationsController;
-use App\Http\Controllers\Hr\OperationsController as HrOperationsController;
-use ReflectionClass;
+use App\Services\BiometricPdfParser;
 use Tests\TestCase;
 
 class DtrPdfParserTest extends TestCase
 {
     public function test_admin_parser_reads_civil_service_form_48_rows(): void
     {
-        $records = $this->parseWith(AdminOperationsController::class, <<<'TEXT'
+        $records = $this->parse(<<<'TEXT'
 Abante, Marciano C
 For the month of
 September 2026
@@ -48,7 +46,7 @@ TEXT
 
     public function test_hr_parser_reads_same_civil_service_format(): void
     {
-        $records = $this->parseWith(HrOperationsController::class, <<<'TEXT'
+        $records = $this->parse(<<<'TEXT'
 Santos, Ana Maria
 For the month of
 September 2026
@@ -63,11 +61,8 @@ TEXT
         $this->assertSame('12:00', $records[1]['time_out']);
     }
 
-    private function parseWith(string $controllerClass, string $text): array
+    private function parse(string $text): array
     {
-        $controller = (new ReflectionClass($controllerClass))->newInstanceWithoutConstructor();
-        $method = (new ReflectionClass($controllerClass))->getMethod('parseBiometricText');
-
-        return $method->invoke($controller, $text);
+        return app(BiometricPdfParser::class)->parseText($text)['records'];
     }
 }

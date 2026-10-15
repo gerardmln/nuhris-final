@@ -69,6 +69,7 @@
                             <p class="text-xs font-semibold text-blue-700">Total Records</p>
                         </div>
                     </div>
+                    @include('partials.pdf-extraction-details')
                     @if (count($unmatchedList) > 0)
                         <div class="mb-4">
                             <h4 class="text-sm font-bold text-red-700 mb-2">Employees NOT Found in HRIS ({{ count($unmatchedList) }})</h4>
