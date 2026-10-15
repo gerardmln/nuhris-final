@@ -2,27 +2,28 @@
 
 namespace App\Http\Controllers\Hr;
 
+use App\Http\Controllers\Concerns\HandlesEmployeeBulkUpload;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
-use App\Mail\EmployeeCredentialsMail;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\User;
+use App\Services\AuditLogService;
+use App\Services\EmployeeAccountService;
 use App\Services\SupabaseAuthSyncService;
 use App\Services\LeaveMonitoringService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class EmployeeController extends Controller
 {
+    use HandlesEmployeeBulkUpload;
+
     public function index(Request $request): View
     {
         $search = $request->string('search')->toString();
@@ -76,6 +77,7 @@ class EmployeeController extends Controller
         return view('hr.employees', array_merge([
             'employees' => $employees,
             'departments' => Department::query()->facultySchools()->orderBy('name')->get(),
+            'latestBulkUploads' => $this->latestBulkUploads(),
             'filters' => [
                 'search' => $search,
                 'department_id' => $departmentId,
@@ -133,6 +135,14 @@ class EmployeeController extends Controller
         [$tempPassword] = $this->provisionEmployeeAccount($employee);
         $emailStatus = $this->sendCredentialsEmail($employee, $tempPassword, isResend: false);
 
+        app(AuditLogService::class)->record(
+            'CREATE',
+            'Employees',
+            'Created employee '.$employee->full_name.' ('.$employee->employee_id.').',
+            'Success',
+            ['employee_id' => $employee->employee_id, 'email' => $employee->email, 'email_sent' => $emailStatus['sent']]
+        );
+
         return redirect()
             ->route('employees.index')
             ->with('success', 'Employee created successfully.')
@@ -185,6 +195,14 @@ class EmployeeController extends Controller
             app(SupabaseAuthSyncService::class)->syncUser($user, null);
         }
 
+        app(AuditLogService::class)->record(
+            'UPDATE',
+            'Employees',
+            'Updated employee '.$employee->full_name.' ('.$employee->employee_id.').',
+            'Success',
+            ['employee_id' => $employee->employee_id, 'changed_fields' => array_keys(\Illuminate\Support\Arr::except($employee->getChanges(), ['updated_at']))]
+        );
+
         return redirect()
             ->route('employees.index')
             ->with('success', 'Employee updated successfully.');
@@ -194,6 +212,7 @@ class EmployeeController extends Controller
     {
         $fullName = $employee->full_name;
         $email = $employee->email;
+        $employeeCode = $employee->employee_id;
 
         try {
             DB::transaction(function () use ($employee, $email) {
@@ -216,10 +235,26 @@ class EmployeeController extends Controller
                 'error' => $exception->getMessage(),
             ]);
 
+            app(AuditLogService::class)->record(
+                'DELETE',
+                'Employees',
+                'Failed to delete employee '.$fullName.' ('.$employeeCode.').',
+                'Failed',
+                ['employee_id' => $employeeCode, 'email' => $email]
+            );
+
             return redirect()
                 ->route('employees.index')
                 ->with('error', 'Failed to delete '.$fullName.': '.$exception->getMessage());
         }
+
+        app(AuditLogService::class)->record(
+            'DELETE',
+            'Employees',
+            'Deleted employee '.$fullName.' ('.$employeeCode.') and all related records.',
+            'Success',
+            ['employee_id' => $employeeCode, 'email' => $email]
+        );
 
         return redirect()
             ->route('employees.index')
@@ -234,6 +269,14 @@ class EmployeeController extends Controller
     {
         [$tempPassword] = $this->provisionEmployeeAccount($employee, forceReset: true);
         $emailStatus = $this->sendCredentialsEmail($employee, $tempPassword, isResend: true);
+
+        app(AuditLogService::class)->record(
+            'RESET',
+            'Employees',
+            'Regenerated login credentials for '.$employee->full_name.' ('.$employee->employee_id.').',
+            'Success',
+            ['employee_id' => $employee->employee_id, 'email' => $employee->email, 'email_sent' => $emailStatus['sent']]
+        );
 
         return redirect()
             ->route('employees.index')
@@ -257,23 +300,7 @@ class EmployeeController extends Controller
      */
     private function sendCredentialsEmail(Employee $employee, string $tempPassword, bool $isResend): array
     {
-        try {
-            Mail::to($employee->email)
-                ->send(new EmployeeCredentialsMail($employee, $tempPassword, $isResend));
-
-            return ['sent' => true, 'message' => null];
-        } catch (\Throwable $exception) {
-            Log::warning('Failed to send employee credentials email', [
-                'employee_id' => $employee->id,
-                'email' => $employee->email,
-                'error' => $exception->getMessage(),
-            ]);
-
-            return [
-                'sent' => false,
-                'message' => 'Email delivery failed because SMTP authentication is unavailable right now. Please share the credentials manually.',
-            ];
-        }
+        return app(EmployeeAccountService::class)->sendCredentials($employee, $tempPassword, $isResend);
     }
 
     /**
@@ -283,38 +310,7 @@ class EmployeeController extends Controller
      */
     private function provisionEmployeeAccount(Employee $employee, bool $forceReset = false): array
     {
-        $tempPassword = Str::upper(Str::random(4)).'-'.random_int(1000, 9999);
-
-        DB::transaction(function () use ($employee, $tempPassword, $forceReset) {
-            $user = User::query()->where('email', $employee->email)->first();
-
-            if (! $user) {
-                $user = User::create([
-                    'name' => $employee->full_name,
-                    'email' => $employee->email,
-                    'password' => Hash::make($tempPassword),
-                    'user_type' => User::TYPE_EMPLOYEE,
-                ]);
-
-                app(SupabaseAuthSyncService::class)->syncUser($user, $tempPassword);
-
-                return;
-            }
-
-            if ($forceReset) {
-                $user->forceFill([
-                    'name' => $employee->full_name,
-                    'password' => Hash::make($tempPassword),
-                ])->save();
-                $syncSuccess = app(SupabaseAuthSyncService::class)->updateUserPassword($user, $tempPassword);
-                
-                if (!$syncSuccess) {
-                    throw new \RuntimeException('Failed to synchronize password with authentication service. Employee will not be able to log in.');
-                }
-            }
-        });
-
-        return [$tempPassword];
+        return [app(EmployeeAccountService::class)->provision($employee, $forceReset)];
     }
 
     /**
@@ -338,45 +334,6 @@ class EmployeeController extends Controller
 
     private function applyDefaultDepartmentForNonTeachingRoles(array $payload): array
     {
-        $position = Str::lower((string) ($payload['position'] ?? ''));
-
-        // SHS positions always belong to the SHS department.
-        if (Str::contains($position, '(shs)')) {
-            $payload['department_id'] = Department::shsId();
-
-            return $payload;
-        }
-
-        // If this is a Faculty employment type, trust whatever school /
-        // department the HR picked (SABM, SAHS, SACE, SHS, or ASP). All
-        // faculty positions — Instructor, Assistant/Associate/Full
-        // Professor, Dean, Program Chair — belong to a school, not to ASP.
-        $employmentType = Str::lower((string) ($payload['employment_type'] ?? ''));
-
-        if (Str::contains($employmentType, 'faculty')) {
-            return $payload;
-        }
-
-        // Fallback: also treat any position explicitly listed under
-        // hris.faculty_positions as teaching, in case employment_type was
-        // omitted from the payload.
-        $position = Str::lower((string) ($payload['position'] ?? ''));
-        $facultyPositions = array_map(
-            fn ($p) => Str::lower((string) $p),
-            (array) config('hris.faculty_positions', [])
-        );
-
-        if (in_array($position, $facultyPositions, true)) {
-            return $payload;
-        }
-
-        // Otherwise it's an Admin Support role — force department to ASP.
-        $aspDepartmentId = Department::query()->where('name', 'ASP')->value('id');
-
-        if (filled($aspDepartmentId)) {
-            $payload['department_id'] = $aspDepartmentId;
-        }
-
-        return $payload;
+        return Employee::withDefaultDepartment($payload);
     }
 }

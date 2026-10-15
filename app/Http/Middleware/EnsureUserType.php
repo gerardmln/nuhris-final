@@ -21,7 +21,7 @@ class EnsureUserType
 
         $allowedTypes = array_map(static fn ($type) => (int) $type, $types);
 
-        if (! in_array((int) $user->user_type, $allowedTypes, true)) {
+        if (! collect($allowedTypes)->contains(fn (int $type) => $user->canAccessPortal($type))) {
             abort(403, 'You are not authorized to access this module.');
         }
 

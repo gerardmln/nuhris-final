@@ -99,8 +99,16 @@ class UpdateEmployeeRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'position.in' => 'The selected position does not belong to the chosen Employee Type.',
-            'ranking.in' => 'The selected Faculty Ranking does not match the selected Position.',
+            'position.in' => 'The selected rank does not belong to the chosen Employee Type.',
+            'ranking.in' => 'The selected level does not match the selected rank.',
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'position' => 'rank',
+            'ranking' => 'level',
         ];
     }
 

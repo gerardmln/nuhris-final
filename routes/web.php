@@ -37,6 +37,7 @@ Route::prefix('hr')->middleware(['auth', 'user.type:2', 'privacy.notice'])->grou
     Route::get('/employees/create', [EmployeeController::class, 'create'])->name('employees.create');
 
     Route::post('/employees', [EmployeeController::class, 'store'])->name('employees.store');
+    Route::post('/employees/bulk-upload', [EmployeeController::class, 'bulkUpload'])->name('employees.bulk-upload');
 
     Route::get('/employees/{employee}', [EmployeeController::class, 'show'])->whereNumber('employee')->name('employees.show');
 
@@ -341,8 +342,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
     // ========== ROLE MANAGEMENT ==========
     Route::prefix('roles')->name('roles.')->group(function () {
         Route::get('/', [RoleManagementController::class, 'index'])->name('index');
-        Route::post('/timekeepers', [RoleManagementController::class, 'addTimekeeper'])->name('timekeepers.store');
-        Route::delete('/{user}', [RoleManagementController::class, 'destroy'])->whereNumber('user')->name('destroy');
         Route::put('/{user}', [RoleManagementController::class, 'updateRole'])->whereNumber('user')->name('update');
     });
 
@@ -359,6 +358,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'user.type:1', 'priv
         Route::get('/', [\App\Http\Controllers\Admin\EmployeeController::class, 'index'])->name('index');
         Route::get('/create', [\App\Http\Controllers\Admin\EmployeeController::class, 'create'])->name('create');
         Route::post('/', [\App\Http\Controllers\Admin\EmployeeController::class, 'store'])->name('store');
+        Route::post('/bulk-upload', [\App\Http\Controllers\Admin\EmployeeController::class, 'bulkUpload'])->name('bulk-upload');
+        Route::post('/bulk-upload/clear', [\App\Http\Controllers\Admin\EmployeeController::class, 'clearBulkUploadHistory'])->name('bulk-upload.clear');
         Route::get('/{employee}', [\App\Http\Controllers\Admin\EmployeeController::class, 'show'])->whereNumber('employee')->name('show');
         Route::get('/{employee}/edit', [\App\Http\Controllers\Admin\EmployeeController::class, 'edit'])->whereNumber('employee')->name('edit');
         Route::put('/{employee}', [\App\Http\Controllers\Admin\EmployeeController::class, 'update'])->whereNumber('employee')->name('update');

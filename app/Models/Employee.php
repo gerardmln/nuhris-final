@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class Employee extends Model
 {
@@ -23,6 +24,57 @@ class Employee extends Model
 
             $employee->employee_id = static::generateEmployeeId();
         });
+    }
+
+    /**
+     * Employee IDs are compared without dashes or spaces, so "23-8041" and
+     * "238041" refer to the same person.
+     */
+    public static function normalizeEmployeeId(?string $id): string
+    {
+        $normalized = preg_replace('/[^A-Za-z0-9]/', '', trim((string) $id)) ?? '';
+
+        return strtoupper($normalized);
+    }
+
+    /**
+     * Apply the department defaults used when saving an employee: SHS
+     * positions belong to SHS, faculty keep the chosen school, and Admin
+     * Support roles are placed under ASP.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public static function withDefaultDepartment(array $payload): array
+    {
+        $position = Str::lower((string) ($payload['position'] ?? ''));
+
+        if (Str::contains($position, '(shs)')) {
+            $payload['department_id'] = Department::shsId();
+
+            return $payload;
+        }
+
+        if (Str::contains(Str::lower((string) ($payload['employment_type'] ?? '')), 'faculty')) {
+            return $payload;
+        }
+
+        $facultyPositions = array_map(
+            fn ($p) => Str::lower((string) $p),
+            (array) config('hris.faculty_positions', [])
+        );
+
+        if (in_array($position, $facultyPositions, true)) {
+            return $payload;
+        }
+
+        $aspDepartmentId = Department::query()->where('name', 'ASP')->value('id');
+
+        if (filled($aspDepartmentId)) {
+            $payload['department_id'] = $aspDepartmentId;
+        }
+
+        return $payload;
     }
 
     public static function generateEmployeeId(?int $year = null): string

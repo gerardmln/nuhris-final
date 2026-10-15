@@ -217,6 +217,16 @@ class OperationsController extends Controller
             );
         });
 
+        $credential->loadMissing('employee');
+
+        app(\App\Services\AuditLogService::class)->record(
+            'APPROVE',
+            'Credentials',
+            'Approved degree for '.($credential->employee?->full_name ?? 'an employee').'.',
+            'Success',
+            ['credential_id' => $credential->id, 'employee_id' => $credential->employee?->employee_id]
+        );
+
         return back()->with('success', 'Degree approved successfully.');
     }
 
@@ -257,6 +267,16 @@ class OperationsController extends Controller
                 'file_path' => $credential->file_path,
             ]);
         }
+
+        $credential->loadMissing('employee');
+
+        app(\App\Services\AuditLogService::class)->record(
+            'DECLINE',
+            'Credentials',
+            'Declined degree for '.($credential->employee?->full_name ?? 'an employee').'.',
+            'Success',
+            ['credential_id' => $credential->id, 'employee_id' => $credential->employee?->employee_id, 'review_notes' => $validated['review_notes']]
+        );
 
         return back()->with('success', 'Degree declined. The employee will see your notes.');
     }
@@ -1078,6 +1098,14 @@ class OperationsController extends Controller
     {
         $deleted = AttendanceRecord::query()->delete();
 
+        app(\App\Services\AuditLogService::class)->record(
+            'DELETE',
+            'DTR',
+            "Cleared all attendance records ({$deleted}).",
+            'Success',
+            ['deleted' => $deleted]
+        );
+
         return back()->with('success', "Cleared {$deleted} attendance record(s). You can now re-upload a biometric PDF.");
     }
 
@@ -1096,6 +1124,14 @@ class OperationsController extends Controller
                 $selectedDate->copy()->endOfMonth(),
             ])
             ->delete();
+
+        app(\App\Services\AuditLogService::class)->record(
+            'DELETE',
+            'DTR',
+            sprintf('Cleared %d attendance record(s) for %s (%s).', $deleted, $employee->full_name, $selectedDate->format('F Y')),
+            'Success',
+            ['employee_id' => $employee->employee_id, 'month' => $month, 'year' => $year, 'deleted' => $deleted]
+        );
 
         return back()->with('success', "Cleared {$deleted} attendance record(s) for {$employee->full_name}.");
     }
@@ -2220,6 +2256,9 @@ class OperationsController extends Controller
                         'schedule_notes' => $evaluation['schedule_notes'],
                         'is_scheduled_workday' => (bool) ($scheduleDay?->has_work),
                         'status' => $statusLabel,
+                        'status_reason' => $statusLabel === 'Present'
+                            ? $scheduleService->presentReason($evaluation['schedule_notes'], $record?->schedule_notes)
+                            : null,
                     ];
                 }
 

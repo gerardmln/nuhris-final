@@ -9,6 +9,7 @@ use App\Models\Announcement;
 use App\Models\AnnouncementNotification;
 use App\Models\Employee;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -156,6 +157,14 @@ class AnnouncementController extends Controller
             if (! empty($rows)) {
                 AnnouncementNotification::insert($rows);
             }
+
+            app(AuditLogService::class)->record(
+                'CREATE',
+                'Announcements',
+                'Posted announcement "'.$announcement->title.'".',
+                'Success',
+                ['announcement_id' => $announcement->id, 'recipients' => count($rows)]
+            );
         });
 
         return redirect()->route('announcements.index')->with('success', 'Announcement posted and notifications sent.');
@@ -164,6 +173,14 @@ class AnnouncementController extends Controller
     public function destroy(Announcement $announcement): RedirectResponse
     {
         $announcement->delete();
+
+        app(AuditLogService::class)->record(
+            'DELETE',
+            'Announcements',
+            'Deleted announcement "'.$announcement->title.'".',
+            'Success',
+            ['announcement_id' => $announcement->id]
+        );
 
         return redirect()->route('announcements.index')->with('success', 'Announcement deleted successfully.');
     }

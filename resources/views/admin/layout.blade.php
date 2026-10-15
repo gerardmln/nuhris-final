@@ -144,7 +144,7 @@
             </div>
         </aside>
 
-        <main class="min-h-screen flex-1">
+        <main class="min-h-screen min-w-0 flex-1">
             <header class="border-b border-slate-300 bg-white px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div>

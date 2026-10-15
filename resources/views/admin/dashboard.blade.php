@@ -5,7 +5,7 @@
 @section('hide_page_heading', true)
 
 @section('content')
-    <p class="text-sm font-semibold text-slate-600">Welcome Back, Admin!</p>
+    <p class="text-sm font-semibold text-slate-600">Welcome Back, {{ auth()->user()->name }}!</p>
 
     @php
         $featuredActionCards = collect($actionRequiredCards)

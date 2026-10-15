@@ -41,6 +41,8 @@
                 <p class="text-xs text-slate-500">{{ auth()->user()->email ?? 'martinezian@gmail.com' }}</p>
             </div>
 
+            @include('partials.portal-switcher')
+
             @auth
                 <div class="p-2">
                     <button type="button"

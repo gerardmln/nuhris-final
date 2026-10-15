@@ -185,14 +185,14 @@
                     @forelse ($records as $record)
                         <tr>
                             <td class="px-4 py-2">{{ $record['date'] }}</td>
-                            <td class="px-4 py-2">{{ $record['time_in'] ?? '-' }}</td>
-                            <td class="px-4 py-2">{{ $record['time_out'] ?? '-' }}</td>
+                            <td class="px-4 py-2 {{ ($record['tardiness_minutes'] ?? 0) > 0 ? 'font-semibold text-red-600' : '' }}">{{ $record['time_in'] ?? '-' }}</td>
+                            <td class="px-4 py-2 {{ ($record['undertime_minutes'] ?? 0) > 0 ? 'font-semibold text-red-600' : '' }}">{{ $record['time_out'] ?? '-' }}</td>
                             <td class="px-4 py-2">{{ $record['scheduled'] }}</td>
                             <td class="px-4 py-2">{{ $record['tardiness_minutes'] }}m</td>
                             <td class="px-4 py-2">{{ $record['undertime_minutes'] }}m</td>
                             <td class="px-4 py-2">{{ $record['overtime_minutes'] }}m</td>
                             <td class="px-4 py-2">
-                                <div>{{ $record['status'] }}</div>
+                                <div>{{ $record['status'] }}{{ ! empty($record['status_reason']) ? ' / '.$record['status_reason'] : '' }}</div>
                                 @if (! in_array($record['schedule_status'] ?? '', ['validated', '', null], true))
                                     <div class="text-xs text-slate-500">{{ $record['schedule_notes'] ?? ucfirst(str_replace('_', ' ', $record['schedule_status'])) }}</div>
                                 @endif

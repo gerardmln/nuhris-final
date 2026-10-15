@@ -529,6 +529,9 @@ class PortalController extends Controller
                 'schedule_status' => $record->schedule_status,
                 'schedule_notes' => $record->schedule_notes,
                 'status' => $statusLabel,
+                'status_reason' => $record->status === 'present'
+                    ? $scheduleService->presentReason($record->schedule_notes)
+                    : null,
             ];
         });
 

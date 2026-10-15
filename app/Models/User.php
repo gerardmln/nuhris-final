@@ -52,6 +52,34 @@ class User extends Authenticatable
         return $this->user_type === self::TYPE_EMPLOYEE;
     }
 
+    /**
+     * Roles are hierarchical: Admin can open the Admin, HR and Employee portals,
+     * HR can open the HR and Employee portals, Employee only the Employee portal.
+     */
+    public function canAccessPortal(int $portalType): bool
+    {
+        return in_array($this->user_type, [self::TYPE_ADMIN, self::TYPE_HR, self::TYPE_EMPLOYEE], true)
+            && $this->user_type <= $portalType;
+    }
+
+    /**
+     * @return array<int, array{label: string, route: string, prefix: string}>
+     */
+    public function accessiblePortals(): array
+    {
+        $portals = [
+            self::TYPE_ADMIN => ['label' => 'Admin Portal', 'route' => 'admin.dashboard', 'prefix' => 'admin'],
+            self::TYPE_HR => ['label' => 'HR Portal', 'route' => 'dashboard', 'prefix' => 'hr'],
+            self::TYPE_EMPLOYEE => ['label' => 'Employee Portal', 'route' => 'employee.dashboard', 'prefix' => 'employee'],
+        ];
+
+        return array_values(array_filter(
+            $portals,
+            fn (int $portalType) => $this->canAccessPortal($portalType),
+            ARRAY_FILTER_USE_KEY,
+        ));
+    }
+
     public function announcementsCreated(): HasMany
     {
         return $this->hasMany(Announcement::class, 'created_by');

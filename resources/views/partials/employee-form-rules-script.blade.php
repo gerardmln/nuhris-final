@@ -10,23 +10,9 @@
         window.__nuhrisEmployeeFormRulesLoaded = true;
 
         const normalize = (value) => String(value ?? '').trim().toLowerCase();
-        const teachingKeywords = ['professor', 'dean', 'program chair', 'instructor'];
-        const shsKeywords = ['(shs)'];
 
         function isPartTimeFacultyValue(value) {
             return normalize(value) === 'part-time faculty';
-        }
-
-        function isTeachingPosition(position) {
-            const normalized = normalize(position);
-
-            return teachingKeywords.some((keyword) => normalized.includes(keyword))
-                || shsKeywords.some((keyword) => normalized.includes(keyword))
-                || isPartTimeFacultyValue(normalized);
-        }
-
-        function needsDepartmentSelection(employmentType, position) {
-            return isTeachingPosition(position) || isPartTimeFacultyValue(employmentType);
         }
 
         function isShsPosition(position) {
@@ -109,19 +95,29 @@
             return '';
         }
 
-        function positionMatchesCategory(option, category) {
+        function isShsDepartment(departmentControl) {
+            const selected = departmentControl?.selectedOptions?.[0];
+
+            return Boolean(selected && selected.value !== '' && normalize(selected.textContent).startsWith('shs'));
+        }
+
+        function positionMatchesCategory(option, category, departmentIsShs) {
             const optionCategory = option.dataset.employmentCategory || '';
             const isPartTimeOption = isPartTimeFacultyValue(option.value);
 
             if (category === '') return true;
             if (category === 'part-time-faculty') return isPartTimeOption;
-            if (category === 'faculty') return optionCategory === 'faculty' && !isPartTimeOption;
+            // Faculty positions follow the chosen department: SHS gets the
+            // "(SHS)" positions, every college school gets the rest.
+            if (category === 'faculty') {
+                return optionCategory === 'faculty' && !isPartTimeOption && isShsPosition(option.value) === departmentIsShs;
+            }
             if (category === 'asp') return optionCategory === 'asp';
 
             return optionCategory === category;
         }
 
-        function filterPositionOptions(positionControl, employmentType) {
+        function filterPositionOptions(positionControl, employmentType, departmentIsShs) {
             if (!positionControl) return;
 
             const category = employmentCategory(employmentType);
@@ -135,7 +131,7 @@
                     return;
                 }
 
-                const matches = positionMatchesCategory(option, category);
+                const matches = positionMatchesCategory(option, category, departmentIsShs);
                 option.hidden = !matches;
                 option.disabled = !matches;
 
@@ -147,53 +143,68 @@
             if (!selectedStillVisible && category !== '') {
                 positionControl.value = '';
             }
+
+            // Part-time faculty has a single position; pick it automatically.
+            const visibleOptions = options.filter((option) => option.value !== '' && !option.disabled);
+            if (category === 'part-time-faculty' && visibleOptions.length === 1) {
+                positionControl.value = visibleOptions[0].value;
+            }
         }
 
         function updateEmployeeFormState(form) {
             if (!form) return;
 
             const employmentType = getControl(form, 'employment_type')?.value ?? '';
+            const category = employmentCategory(employmentType);
+            const positionField = getField(form, 'position');
             const positionControl = getControl(form, 'position');
-
-            filterPositionOptions(positionControl, employmentType);
-
-            const position = positionControl?.value ?? '';
             const departmentField = getField(form, 'department');
             const departmentControl = getControl(form, 'department');
+            const departmentHidden = getControl(form, 'department_hidden');
+
+            // Faculty pick their department first; Admin Support Personnel have none.
+            const needsDepartment = category === 'faculty' || category === 'part-time-faculty';
+
+            if (departmentField && departmentControl) {
+                setFieldVisible(departmentField, needsDepartment);
+                departmentControl.required = needsDepartment;
+                departmentControl.disabled = false;
+
+                if (!needsDepartment) {
+                    departmentControl.value = '';
+                }
+            }
+
+            if (departmentHidden) {
+                departmentHidden.disabled = true;
+            }
+
+            // Position appears once its prerequisites are chosen. Unknown legacy
+            // employee types keep the old behaviour of listing every position.
+            const positionReady = category === 'asp'
+                || (needsDepartment && (departmentControl?.value ?? '') !== '')
+                || (category === '' && employmentType !== '');
+
+            filterPositionOptions(positionControl, employmentType, isShsDepartment(departmentControl));
+
+            if (positionControl) {
+                setFieldVisible(positionField, positionReady);
+                positionControl.required = positionReady;
+
+                if (!positionReady) {
+                    positionControl.value = '';
+                }
+            }
+
+            const position = positionControl?.value ?? '';
             const rankingField = getField(form, 'ranking');
             const rankingControl = getControl(form, 'ranking');
             const employmentStatusControl = getControl(form, 'employment_status');
             const employmentStatusField = getField(form, 'employment_status');
             const employmentStatusHidden = getControl(form, 'employment_status_hidden');
             const employmentStatusHelp = form.querySelector('[data-employee-help="employment_status"]');
-            const departmentHidden = getControl(form, 'department_hidden');
 
-            const needsDepartment = needsDepartmentSelection(employmentType, position);
             const needsRanking = requiresGroupedRanking(position);
-            const isShs = isShsPosition(position);
-
-            if (departmentField && departmentControl) {
-                setFieldVisible(departmentField, needsDepartment);
-                departmentControl.required = needsDepartment && !isShs;
-                departmentControl.disabled = isShs;
-
-                if (isShs) {
-                    const shsOption = Array.from(departmentControl.options).find(
-                        (opt) => normalize(opt.textContent).includes('shs')
-                    );
-
-                    if (shsOption) {
-                        departmentControl.value = shsOption.value;
-                    }
-                } else if (!needsDepartment) {
-                    departmentControl.value = '';
-                }
-
-                if (departmentHidden) {
-                    departmentHidden.value = departmentControl.value;
-                    departmentHidden.disabled = !isShs;
-                }
-            }
 
             if (rankingField && rankingControl) {
                 filterRankingOptions(rankingControl, position);
@@ -231,17 +242,20 @@
 
             const typeControl = getControl(form, 'employment_type');
             const positionControl = getControl(form, 'position');
+            const departmentControl = getControl(form, 'department');
 
             if (!positionControl) return;
 
             const handleChange = () => updateEmployeeFormState(form);
 
             positionControl.addEventListener('change', handleChange);
-            positionControl.addEventListener('focus', handleChange);
-            positionControl.addEventListener('mousedown', handleChange);
 
             if (typeControl) {
                 typeControl.addEventListener('change', handleChange);
+            }
+
+            if (departmentControl) {
+                departmentControl.addEventListener('change', handleChange);
             }
 
             form.dataset.employeeFormBound = '1';

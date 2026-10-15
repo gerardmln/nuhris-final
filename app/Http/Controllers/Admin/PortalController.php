@@ -299,6 +299,7 @@ class PortalController extends Controller
 
         $knownModules = [
             'Academic Calendar',
+            'Announcements',
             'API Integrations',
             'Authentication',
             'Credentials',

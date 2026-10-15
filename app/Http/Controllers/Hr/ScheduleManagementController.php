@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\Employee;
 use App\Models\EmployeeScheduleSubmission;
 use App\Models\User;
+use App\Services\AuditLogService;
 use App\Services\EmployeeScheduleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -127,6 +128,14 @@ class ScheduleManagementController extends Controller
             sprintf('Your weekly schedule for %s %s was approved by HR.', $submission->semester_label, $submission->academic_year)
         );
 
+        app(AuditLogService::class)->record(
+            'APPROVE',
+            'Schedules',
+            'Approved schedule for '.($submission->employee?->full_name ?? 'an employee').'.',
+            'Success',
+            ['submission_id' => $submission->id, 'employee_id' => $submission->employee?->employee_id]
+        );
+
         return back()->with('success', 'Schedule approved successfully.');
     }
 
@@ -158,6 +167,14 @@ class ScheduleManagementController extends Controller
             $submission,
             'Schedule cleared',
             sprintf('Your approved weekly schedule for term "%s" was cleared by HR. Please resubmit a revised schedule.', $submission->semester_label)
+        );
+
+        app(AuditLogService::class)->record(
+            'DELETE',
+            'Schedules',
+            'Cleared approved schedule for '.($submission->employee?->full_name ?? 'an employee').'.',
+            'Success',
+            ['submission_id' => $submission->id, 'employee_id' => $submission->employee?->employee_id]
         );
 
         return back()->with('success', 'Approved schedule cleared successfully.');
@@ -196,6 +213,14 @@ class ScheduleManagementController extends Controller
             sprintf('%s schedule has been reset by HR. Please submit a new schedule.', $employee->full_name)
         );
 
+        app(AuditLogService::class)->record(
+            'RESET',
+            'Schedules',
+            'Reset schedule for '.$employee->full_name.'.',
+            'Success',
+            ['employee_id' => $employee->employee_id, 'submissions' => $submissions->count()]
+        );
+
         return back()->with('success', $employee->full_name.' schedule was reset successfully.');
     }
 
@@ -223,6 +248,14 @@ class ScheduleManagementController extends Controller
             sprintf('Your weekly schedule for %s %s was declined by HR. Notes: %s', $submission->semester_label, $submission->academic_year, $validated['review_notes'])
         );
 
+        app(AuditLogService::class)->record(
+            'DECLINE',
+            'Schedules',
+            'Declined schedule for '.($submission->employee?->full_name ?? 'an employee').'.',
+            'Success',
+            ['submission_id' => $submission->id, 'employee_id' => $submission->employee?->employee_id, 'review_notes' => $validated['review_notes']]
+        );
+
         return back()->with('success', 'Schedule declined. The employee has been notified.');
     }
 
@@ -232,10 +265,18 @@ class ScheduleManagementController extends Controller
             'confirmed' => ['accepted', 'in:1'],
         ]);
 
-        EmployeeScheduleSubmission::query()->update([
+        $resetCount = EmployeeScheduleSubmission::query()->update([
             'status' => EmployeeScheduleSubmission::STATUS_RESET,
             'is_current' => false,
         ]);
+
+        app(AuditLogService::class)->record(
+            'RESET',
+            'Schedules',
+            'Reset all employee schedules.',
+            'Success',
+            ['submissions' => $resetCount]
+        );
 
         return back()->with('success', 'All schedules were reset. Employees must resubmit before DTR validation resumes.');
     }

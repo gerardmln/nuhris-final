@@ -2,76 +2,48 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Mail\TimekeeperCredentialsMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Mail;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class RoleManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_create_a_timekeeper_without_an_employee_record(): void
+    /**
+     * @return array<string, array{int, array<string, bool>}>
+     */
+    public static function portalAccessProvider(): array
     {
-        Mail::fake();
-
-        $admin = User::factory()->create(['user_type' => User::TYPE_ADMIN]);
-
-        $response = $this->withSession(['privacy_notice_acknowledged_version' => config('privacy.notice_version')])
-            ->actingAs($admin)->post(route('admin.roles.timekeepers.store'), [
-                'email' => 'timekeeper@example.com',
-            ]);
-
-        $response->assertRedirect(route('admin.roles.index'));
-        $response->assertSessionHas('success', 'Timekeeper account created and credentials sent to timekeeper@example.com.');
-
-        $timekeeper = User::query()->where('email', 'timekeeper@example.com')->firstOrFail();
-
-        $this->assertSame(User::TYPE_HR, $timekeeper->user_type);
-        $this->assertDatabaseMissing('employees', ['email' => 'timekeeper@example.com']);
-        Mail::assertSent(TimekeeperCredentialsMail::class, function (TimekeeperCredentialsMail $mail) use ($timekeeper) {
-            return $mail->user->is($timekeeper)
-                && $mail->hasTo('timekeeper@example.com')
-                && $mail->temporaryPassword !== '';
-        });
+        return [
+            'admin opens every portal' => [User::TYPE_ADMIN, ['admin.dashboard' => true, 'dashboard' => true, 'employee.dashboard' => true]],
+            'hr opens hr and employee portals' => [User::TYPE_HR, ['admin.dashboard' => false, 'dashboard' => true, 'employee.dashboard' => true]],
+            'employee opens only the employee portal' => [User::TYPE_EMPLOYEE, ['admin.dashboard' => false, 'dashboard' => false, 'employee.dashboard' => true]],
+        ];
     }
 
-    public function test_duplicate_timekeeper_email_is_rejected(): void
+    #[DataProvider('portalAccessProvider')]
+    public function test_portal_access_follows_the_role_hierarchy(int $userType, array $expectations): void
     {
-        $admin = User::factory()->create(['user_type' => User::TYPE_ADMIN]);
-        User::factory()->create(['email' => 'existing@example.com']);
-
-        $response = $this->withSession(['privacy_notice_acknowledged_version' => config('privacy.notice_version')])
-            ->actingAs($admin)->from(route('admin.roles.index'))->post(route('admin.roles.timekeepers.store'), [
-                'email' => 'existing@example.com',
-            ]);
-
-        $response->assertRedirect(route('admin.roles.index'));
-        $response->assertSessionHasErrors('email');
-    }
-
-    public function test_admin_can_delete_an_hr_user_but_not_admin_or_employee_users(): void
-    {
-        $admin = User::factory()->create(['user_type' => User::TYPE_ADMIN]);
-        $hr = User::factory()->create(['user_type' => User::TYPE_HR]);
-        $employee = User::factory()->create(['user_type' => User::TYPE_EMPLOYEE]);
+        $user = User::factory()->create(['user_type' => $userType]);
         $session = ['privacy_notice_acknowledged_version' => config('privacy.notice_version')];
 
-        $response = $this->withSession($session)->actingAs($admin)
-            ->delete(route('admin.roles.destroy', $hr));
+        foreach ($expectations as $route => $allowed) {
+            $status = $this->withSession($session)->actingAs($user)->get(route($route))->getStatusCode();
 
-        $response->assertSessionHas('success', "Timekeeper account {$hr->email} has been deleted.");
-        $this->assertDatabaseMissing('users', ['id' => $hr->id]);
+            $allowed
+                ? $this->assertLessThan(400, $status, "Expected {$route} to be accessible.")
+                : $this->assertSame(403, $status, "Expected {$route} to be forbidden.");
+        }
+    }
 
-        $response = $this->withSession($session)->actingAs($admin)
-            ->delete(route('admin.roles.destroy', $admin));
-        $response->assertSessionHas('error', 'Admin users cannot be deleted.');
-        $this->assertDatabaseHas('users', ['id' => $admin->id]);
+    public function test_accessible_portals_are_listed_for_the_portal_switcher(): void
+    {
+        $portalRoutes = fn (int $type) => array_column(User::factory()->make(['user_type' => $type])->accessiblePortals(), 'route');
 
-        $response = $this->withSession($session)->actingAs($admin)
-            ->delete(route('admin.roles.destroy', $employee));
-        $response->assertSessionHas('error', 'To delete an employee, go to the Employees module.');
-        $this->assertDatabaseHas('users', ['id' => $employee->id]);
+        $this->assertSame(['admin.dashboard', 'dashboard', 'employee.dashboard'], $portalRoutes(User::TYPE_ADMIN));
+        $this->assertSame(['dashboard', 'employee.dashboard'], $portalRoutes(User::TYPE_HR));
+        $this->assertSame(['employee.dashboard'], $portalRoutes(User::TYPE_EMPLOYEE));
     }
 }

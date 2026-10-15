@@ -2,28 +2,47 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\HandlesEmployeeBulkUpload;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
-use App\Mail\EmployeeCredentialsMail;
 use App\Models\Announcement;
 use App\Models\AnnouncementNotification;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\User;
 use App\Services\AuditLogService;
+use App\Services\EmployeeAccountService;
 use App\Services\SupabaseAuthSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class EmployeeController extends Controller
 {
+    use HandlesEmployeeBulkUpload;
+
+    /**
+     * Clear the bulk upload history. Employee records are not touched.
+     */
+    public function clearBulkUploadHistory(): RedirectResponse
+    {
+        $deleted = $this->bulkUploadLogQuery()->delete();
+        $entryLabel = $deleted === 1 ? 'entry' : 'entries';
+
+        app(AuditLogService::class)->record('DELETE', 'Employees', "Cleared {$deleted} employee bulk upload history {$entryLabel}.", 'Success', [
+            'deleted_upload_entries' => $deleted,
+            'employee_records_affected' => false,
+        ]);
+
+        return redirect()->route('admin.employees.index')
+            ->with('success', $deleted > 0
+                ? "Cleared {$deleted} employee bulk upload history {$entryLabel}. Employee records were not changed."
+                : 'Bulk upload history is already clear. Employee records were not changed.');
+    }
+
     public function create(): View
     {
         Department::ensureConfiguredSchoolsExist();
@@ -133,6 +152,7 @@ class EmployeeController extends Controller
 
         return view('admin.employees.index', [
             'employees' => $employees,
+            'latestBulkUploads' => $this->latestBulkUploads(),
             'departments' => Department::query()->orderBy('name')->get(),
             'filters' => [
                 'search' => $search,
@@ -282,49 +302,12 @@ class EmployeeController extends Controller
 
     private function sendCredentialsEmail(Employee $employee, string $tempPassword, bool $isResend): array
     {
-        try {
-            Mail::to($employee->email)->send(new EmployeeCredentialsMail($employee, $tempPassword, $isResend));
-            return ['sent' => true, 'message' => null];
-        } catch (\Throwable $exception) {
-            Log::warning('Admin: Failed to send credentials email', ['employee_id' => $employee->id, 'error' => $exception->getMessage()]);
-            return [
-                'sent' => false,
-                'message' => 'Email delivery failed because SMTP authentication is unavailable right now. Please share the credentials manually.',
-            ];
-        }
+        return app(EmployeeAccountService::class)->sendCredentials($employee, $tempPassword, $isResend);
     }
 
     private function provisionEmployeeAccount(Employee $employee, bool $forceReset = false): array
     {
-        $tempPassword = Str::upper(Str::random(4)).'-'.random_int(1000, 9999);
-
-        DB::transaction(function () use ($employee, $tempPassword, $forceReset) {
-            $user = User::query()->where('email', $employee->email)->first();
-
-            if (! $user) {
-                $user = User::create([
-                    'name' => $employee->full_name,
-                    'email' => $employee->email,
-                    'password' => Hash::make($tempPassword),
-                    'user_type' => User::TYPE_EMPLOYEE,
-                ]);
-
-                app(SupabaseAuthSyncService::class)->syncUser($user, $tempPassword);
-
-                return;
-            }
-
-            if ($forceReset) {
-                $user->forceFill(['name' => $employee->full_name, 'password' => Hash::make($tempPassword)])->save();
-                $syncSuccess = app(SupabaseAuthSyncService::class)->updateUserPassword($user, $tempPassword);
-                
-                if (!$syncSuccess) {
-                    throw new \RuntimeException('Failed to synchronize password with authentication service. Employee will not be able to log in.');
-                }
-            }
-        });
-
-        return [$tempPassword];
+        return [app(EmployeeAccountService::class)->provision($employee, $forceReset)];
     }
 
     /**
@@ -348,38 +331,7 @@ class EmployeeController extends Controller
 
     private function applyDefaultDepartmentForNonTeachingRoles(array $payload): array
     {
-        $position = Str::lower((string) ($payload['position'] ?? ''));
-
-        // SHS positions always belong to the SHS department.
-        if (Str::contains($position, '(shs)')) {
-            $payload['department_id'] = Department::shsId();
-
-            return $payload;
-        }
-
-        $employmentType = Str::lower((string) ($payload['employment_type'] ?? ''));
-
-        if (Str::contains($employmentType, 'faculty')) {
-            return $payload;
-        }
-
-        $position = Str::lower((string) ($payload['position'] ?? ''));
-        $facultyPositions = array_map(
-            fn ($p) => Str::lower((string) $p),
-            (array) config('hris.faculty_positions', [])
-        );
-
-        if (in_array($position, $facultyPositions, true)) {
-            return $payload;
-        }
-
-        $aspDepartmentId = Department::query()->where('name', 'ASP')->value('id');
-
-        if (filled($aspDepartmentId)) {
-            $payload['department_id'] = $aspDepartmentId;
-        }
-
-        return $payload;
+        return Employee::withDefaultDepartment($payload);
     }
 
 }

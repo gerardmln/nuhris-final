@@ -9,7 +9,13 @@
             <div>
                 <p class="text-sm text-slate-500">Manage faculty and staff records</p>
             </div>
-            <a href="{{ route('admin.employees.create') }}" class="rounded-lg bg-[#00386f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f5d]">+ Add Employee</a>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                @include('partials.employee-bulk-upload', [
+                    'bulkUploadRoute' => route('admin.employees.bulk-upload'),
+                    'bulkClearRoute' => route('admin.employees.bulk-upload.clear'),
+                ])
+                <a href="{{ route('admin.employees.create') }}" class="rounded-lg bg-[#00386f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f5d]">+ Add Employee</a>
+            </div>
         </div>
 
         <article class="rounded-xl border border-slate-300 bg-white p-3 shadow-sm">

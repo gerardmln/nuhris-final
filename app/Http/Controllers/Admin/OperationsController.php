@@ -1066,6 +1066,9 @@ class OperationsController extends Controller
                         'schedule_status' => $evaluation['schedule_status'],
                         'schedule_notes' => $evaluation['schedule_notes'],
                         'status' => $statusLabel,
+                        'status_reason' => $statusLabel === 'Present'
+                            ? $scheduleService->presentReason($evaluation['schedule_notes'], $record?->schedule_notes)
+                            : null,
                         'is_future' => $date->gt(now()->endOfDay()),
                     ];
                 }

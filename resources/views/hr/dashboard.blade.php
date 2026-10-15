@@ -26,7 +26,7 @@
             <section class="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
                 <div>
                     <h2 class="text-3xl font-bold text-[#1f2b5d]">HR Dashboard</h2>
-                    <p class="text-sm font-semibold text-slate-600">Welcome Back, Human Resources!</p>
+                    <p class="text-sm font-semibold text-slate-600">Welcome Back, {{ auth()->user()->name }}!</p>
                 </div>
 
                 @php

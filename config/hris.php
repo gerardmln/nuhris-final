@@ -81,5 +81,9 @@ return [
 
     'attendance' => [
         'no_work_day_behavior' => 'ignore',
+        // Minutes after the scheduled time-in before an employee counts as late.
+        // Lateness is measured from the end of the grace period (7:16 on a 7:00
+        // schedule with 15 minutes grace = 1 minute late).
+        'grace_period_minutes' => 15,
     ],
 ];

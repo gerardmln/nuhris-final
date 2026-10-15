@@ -10,6 +10,7 @@ use App\Models\AttendanceRecord;
 use App\Models\Employee;
 use App\Models\User;
 use App\Models\WfhMonitoringSubmission;
+use App\Services\AuditLogService;
 use App\Services\EmployeeScheduleService;
 use App\Services\SupabaseStorageService;
 use Carbon\Carbon;
@@ -103,6 +104,14 @@ class WfhMonitoringController extends Controller
     {
         $deleted = WfhMonitoringSubmission::query()->delete();
 
+        app(AuditLogService::class)->record(
+            'DELETE',
+            'WFH Monitoring',
+            'Cleared all WFH monitoring records.',
+            'Success',
+            ['deleted' => $deleted]
+        );
+
         return redirect()->route('wfh-monitoring.index')->with('success', $deleted > 0
             ? 'All WFH monitoring records were cleared. Attendance records were left untouched.'
             : 'No WFH monitoring records to clear.');
@@ -188,6 +197,14 @@ class WfhMonitoringController extends Controller
             }
         });
 
+        app(AuditLogService::class)->record(
+            'APPROVE',
+            'WFH Monitoring',
+            sprintf('Approved WFH submission of %s for %s.', $submission->employee->full_name, $submission->wfh_date?->format('M d, Y') ?? 'an unspecified date'),
+            'Success',
+            ['submission_id' => $submission->id, 'employee_id' => $submission->employee->employee_id, 'wfh_date' => $submission->wfh_date?->toDateString()]
+        );
+
         return back()->with('success', 'WFH submission approved and attendance was updated.');
     }
 
@@ -234,6 +251,14 @@ class WfhMonitoringController extends Controller
                 'redirect_url' => route('employee.wfh-monitoring.index'),
             ]);
         }
+
+        app(AuditLogService::class)->record(
+            'DECLINE',
+            'WFH Monitoring',
+            sprintf('Declined WFH submission of %s for %s.', $submission->employee?->full_name ?? 'an employee', $submission->wfh_date?->format('M d, Y') ?? 'an unspecified date'),
+            'Success',
+            ['submission_id' => $submission->id, 'employee_id' => $submission->employee?->employee_id, 'wfh_date' => $submission->wfh_date?->toDateString(), 'review_notes' => $validated['review_notes']]
+        );
 
         return back()->with('success', 'WFH submission declined. The employee has been notified.');
     }

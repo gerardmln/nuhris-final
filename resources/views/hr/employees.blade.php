@@ -104,7 +104,10 @@
                     <div>
                         <p class="text-sm text-slate-500">Manage faculty and staff records</p>
                     </div>
-                    <button data-open-modal="employee-add-existing-modal" class="rounded-lg bg-[#00386f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f5d]">+ Add Employee</button>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        @include('partials.employee-bulk-upload', ['bulkUploadRoute' => route('employees.bulk-upload')])
+                        <button data-open-modal="employee-add-existing-modal" class="rounded-lg bg-[#00386f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#002f5d]">+ Add Employee</button>
+                    </div>
                 </div>
 
                 <article class="rounded-xl border border-slate-300 bg-white p-3 shadow-sm">
@@ -325,23 +328,9 @@
                     <input type="hidden" data-employee-control="employment_status_hidden" value="probationary" disabled>
                     <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time faculty are always probationary.</p>
                 </div>
-                <div>
-                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Position *</label>
-                    <select name="position" data-employee-control="position" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700" required>
-                        <option value="">Select Position / Office</option>
-                        @foreach ($facultyPositions as $position)
-                            <option value="{{ $position }}" data-employment-category="faculty">{{ $position }}</option>
-                        @endforeach
-                        @foreach ($aspPositions as $position)
-                            <option value="{{ $position }}" data-employment-category="asp">{{ $position }}</option>
-                        @endforeach
-                    </select>
-                    <p class="mt-1 text-xs text-slate-500">Options are filtered by the selected Employee Type.</p>
-                </div>
                 <div data-employee-field="department">
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Department *</label>
-                    {{-- Hidden mirrors department when the select is disabled (SHS auto-assign). --}}
-                    <input type="hidden" name="department_id" data-employee-control="department_hidden" value="" disabled>
+                                        <input type="hidden" name="department_id" data-employee-control="department_hidden" value="" disabled>
                     <select name="department_id" data-employee-control="department" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-500">
                         <option value="">Select Department</option>
                         @foreach ($departments as $department)
@@ -349,8 +338,21 @@
                         @endforeach
                     </select>
                 </div>
+                <div data-employee-field="position">
+                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Rank *</label>
+                    <select name="position" data-employee-control="position" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700" required>
+                        <option value="">Select Rank / Office</option>
+                        @foreach ($facultyPositions as $position)
+                            <option value="{{ $position }}" data-employment-category="faculty">{{ $position }}</option>
+                        @endforeach
+                        @foreach ($aspPositions as $position)
+                            <option value="{{ $position }}" data-employment-category="asp">{{ $position }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-slate-500">Options are filtered by the selected Employee Type and Department.</p>
+                </div>
                 <div data-employee-field="ranking">
-                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Faculty Ranking</label>
+                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Level</label>
                     <select name="ranking" data-employee-control="ranking" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700">
                         <option value="">N/A</option>
                         @foreach ($facultyRankings as $ranking)
@@ -424,18 +426,6 @@
                     <input type="hidden" data-employee-control="employment_status_hidden" value="probationary" disabled>
                     <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time faculty are always probationary.</p>
                 </div>
-                <div>
-                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Position *</label>
-                    <select name="position" data-employee-control="position" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700" required>
-                        <option value="">Select Position / Office</option>
-                        @foreach ($facultyPositions as $position)
-                            <option value="{{ $position }}" data-employment-category="faculty">{{ $position }}</option>
-                        @endforeach
-                        @foreach ($aspPositions as $position)
-                            <option value="{{ $position }}" data-employment-category="asp">{{ $position }}</option>
-                        @endforeach
-                    </select>
-                </div>
                 <div data-employee-field="department">
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Department *</label>
                     <input type="hidden" name="department_id" data-employee-control="department_hidden" value="" disabled>
@@ -446,8 +436,20 @@
                         @endforeach
                     </select>
                 </div>
+                <div data-employee-field="position">
+                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Rank *</label>
+                    <select name="position" data-employee-control="position" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700" required>
+                        <option value="">Select Rank / Office</option>
+                        @foreach ($facultyPositions as $position)
+                            <option value="{{ $position }}" data-employment-category="faculty">{{ $position }}</option>
+                        @endforeach
+                        @foreach ($aspPositions as $position)
+                            <option value="{{ $position }}" data-employment-category="asp">{{ $position }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div data-employee-field="ranking">
-                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Faculty Ranking</label>
+                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Level</label>
                     <select name="ranking" data-employee-control="ranking" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700">
                         <option value="">N/A</option>
                         @foreach ($facultyRankings as $ranking)
@@ -573,17 +575,6 @@
                     <input type="hidden" data-employee-control="employment_status_hidden" value="probationary" disabled>
                     <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time faculty are always probationary.</p>
                 </div>
-                <div>
-                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Position *</label>
-                    <select id="edit-position" name="position" data-employee-control="position" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700" required>
-                        @foreach ($facultyPositions as $position)
-                            <option value="{{ $position }}" data-employment-category="faculty">{{ $position }}</option>
-                        @endforeach
-                        @foreach ($aspPositions as $position)
-                            <option value="{{ $position }}" data-employment-category="asp">{{ $position }}</option>
-                        @endforeach
-                    </select>
-                </div>
                 <div data-employee-field="department">
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Department *</label>
                     <input type="hidden" name="department_id" data-employee-control="department_hidden" value="" disabled>
@@ -594,8 +585,19 @@
                         @endforeach
                     </select>
                 </div>
+                <div data-employee-field="position">
+                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Rank *</label>
+                    <select id="edit-position" name="position" data-employee-control="position" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700" required>
+                        @foreach ($facultyPositions as $position)
+                            <option value="{{ $position }}" data-employment-category="faculty">{{ $position }}</option>
+                        @endforeach
+                        @foreach ($aspPositions as $position)
+                            <option value="{{ $position }}" data-employment-category="asp">{{ $position }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div data-employee-field="ranking">
-                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Faculty Ranking</label>
+                    <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Level</label>
                     <select id="edit-ranking" name="ranking" data-employee-control="ranking" class="w-full rounded-md border border-slate-300 px-4 py-2 text-lg text-slate-700">
                         <option value="">N/A</option>
                         @foreach ($facultyRankings as $ranking)

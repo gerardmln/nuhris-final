@@ -197,6 +197,36 @@ class EmployeeScheduleService
     }
 
     /**
+     * Short reason a day counts as present without regular attendance,
+     * e.g. "Sick Leave", "Holiday" or "WFH". Pass the evaluated notes first,
+     * then the stored attendance record notes.
+     */
+    public function presentReason(?string ...$notes): ?string
+    {
+        foreach ($notes as $note) {
+            $note = trim((string) $note);
+
+            if ($note === '') {
+                continue;
+            }
+
+            if (preg_match('/^(?:Auto-fulfilled from approved leave|Approved leave):\s*(.+)$/i', $note, $matches)) {
+                return trim($matches[1]);
+            }
+
+            if (str_contains(strtolower($note), '(holiday)')) {
+                return 'Holiday';
+            }
+
+            if (preg_match('/\bwfh\b/i', $note)) {
+                return 'WFH';
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @return array{schedule_status:string, schedule_notes:?string, scheduled_time_in:?string, scheduled_time_out:?string, tardiness_minutes:int, undertime_minutes:int, overtime_minutes:int, status:string}
      */
     public function evaluateDailyRecord(Employee $employee, Carbon $date, ?string $timeIn, ?string $timeOut): array
@@ -384,8 +414,10 @@ class EmployeeScheduleService
         $undertime = 0;
         $overtime = 0;
 
-        if ($actualIn && $scheduledIn && $actualIn->gt($scheduledIn)) {
-            $tardiness = $scheduledIn->diffInMinutes($actualIn);
+        $graceEnd = $scheduledIn?->copy()->addMinutes((int) config('hris.attendance.grace_period_minutes', 15));
+
+        if ($actualIn && $graceEnd && $actualIn->gt($graceEnd)) {
+            $tardiness = (int) $graceEnd->diffInMinutes($actualIn);
         }
 
         if ($actualOut && $scheduledOut) {

@@ -161,13 +161,13 @@
                         <tr class="{{ $record['status'] === 'Weekend' ? 'bg-slate-50 text-slate-400' : ($record['status'] === 'Non-working day' ? 'bg-amber-50/40' : ($record['status'] === 'Not Present' ? 'bg-red-50/40' : '')) }}">
                             <td class="px-3 py-2">{{ $record['date'] }}</td>
                             <td class="px-3 py-2">{{ $record['day'] }}</td>
-                            <td class="px-3 py-2">{{ $record['time_in'] }}</td>
-                            <td class="px-3 py-2">{{ $record['time_out'] }}</td>
+                            <td class="px-3 py-2 {{ ($record['tardiness_minutes'] ?? 0) > 0 ? 'font-semibold text-red-600' : '' }}">{{ $record['time_in'] }}</td>
+                            <td class="px-3 py-2 {{ ($record['undertime_minutes'] ?? 0) > 0 ? 'font-semibold text-red-600' : '' }}">{{ $record['time_out'] }}</td>
                             <td class="px-3 py-2">{{ $record['tardiness_minutes'] ? $record['tardiness_minutes'].' min' : '-' }}</td>
                             <td class="px-3 py-2">{{ $record['undertime_minutes'] ? $record['undertime_minutes'].' min' : '-' }}</td>
                             <td class="px-3 py-2">
                                 @if ($record['status'] === 'Present')
-                                    <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Present</span>
+                                    <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">Present{{ ! empty($record['status_reason']) ? ' / '.$record['status_reason'] : '' }}</span>
                                 @elseif ($record['status'] === 'Not Present')
                                     <span class="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Not Present</span>
                                 @elseif ($record['status'] === 'Non-working day')

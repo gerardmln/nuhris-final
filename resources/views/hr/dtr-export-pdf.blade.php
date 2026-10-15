@@ -76,12 +76,12 @@
                 <tr>
                     <td>{{ $record['date'] }}</td>
                     <td>{{ $record['day'] }}</td>
-                    <td>{{ $record['time_in'] }}</td>
-                    <td>{{ $record['time_out'] }}</td>
+                    <td @if (($record['tardiness_minutes'] ?? 0) > 0) style="color:#dc2626; font-weight:bold;" @endif>{{ $record['time_in'] }}</td>
+                    <td @if (($record['undertime_minutes'] ?? 0) > 0) style="color:#dc2626; font-weight:bold;" @endif>{{ $record['time_out'] }}</td>
                     <td>{{ $record['tardiness_minutes'] ? $record['tardiness_minutes'].' min' : '-' }}</td>
                     <td>{{ $record['undertime_minutes'] ? $record['undertime_minutes'].' min' : '-' }}</td>
                     <td class="{{ $record['status'] === 'Weekend' ? 'weekend' : ($record['status'] === 'Not Present' ? 'absent' : 'present') }}">
-                        {{ $record['status'] }}
+                        {{ $record['status'] }}{{ ! empty($record['status_reason']) ? ' / '.$record['status_reason'] : '' }}
                     </td>
                 </tr>
             @endforeach

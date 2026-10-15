@@ -69,25 +69,6 @@
         @error('employment_status')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
     </div>
 
-    <div>
-        <label for="position" class="mb-1 block text-sm font-semibold text-slate-700">Position *</label>
-        <select id="position" name="position" data-employee-control="position" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none" required>
-            <option value="">Select Position / Office</option>
-            @foreach ($facultyPositions as $position)
-                <option value="{{ $position }}" data-employment-category="faculty" @selected(old('position', $employee->position ?? '') === $position)>
-                    {{ $position }}
-                </option>
-            @endforeach
-            @foreach ($aspPositions as $position)
-                <option value="{{ $position }}" data-employment-category="asp" @selected(old('position', $employee->position ?? '') === $position)>
-                    {{ $position }}
-                </option>
-            @endforeach
-        </select>
-        <p class="mt-1 text-xs text-slate-500">Options are filtered by the selected Employee Type.</p>
-        @error('position')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-    </div>
-
     <div data-employee-field="department">
         <label for="department_id" class="mb-1 block text-sm font-semibold text-slate-700">Department *</label>
         <input type="hidden" name="department_id" data-employee-control="department_hidden" value="{{ old('department_id', $employee->department_id ?? '') }}" disabled>
@@ -102,8 +83,27 @@
         @error('department_id')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
     </div>
 
+    <div data-employee-field="position">
+        <label for="position" class="mb-1 block text-sm font-semibold text-slate-700">Rank *</label>
+        <select id="position" name="position" data-employee-control="position" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none" required>
+            <option value="">Select Rank / Office</option>
+            @foreach ($facultyPositions as $position)
+                <option value="{{ $position }}" data-employment-category="faculty" @selected(old('position', $employee->position ?? '') === $position)>
+                    {{ $position }}
+                </option>
+            @endforeach
+            @foreach ($aspPositions as $position)
+                <option value="{{ $position }}" data-employment-category="asp" @selected(old('position', $employee->position ?? '') === $position)>
+                    {{ $position }}
+                </option>
+            @endforeach
+        </select>
+        <p class="mt-1 text-xs text-slate-500">Options are filtered by the selected Employee Type and Department.</p>
+        @error('position')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+    </div>
+
     <div data-employee-field="ranking">
-        <label for="ranking" class="mb-1 block text-sm font-semibold text-slate-700">Faculty Ranking</label>
+        <label for="ranking" class="mb-1 block text-sm font-semibold text-slate-700">Level</label>
         <select id="ranking" name="ranking" data-employee-control="ranking" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none">
             <option value="">N/A</option>
             @foreach ($facultyRankings as $ranking)

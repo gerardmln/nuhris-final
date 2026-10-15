@@ -122,6 +122,8 @@
                                     <p class="text-xs text-slate-500">{{ $email }}</p>
                                 </div>
 
+                                @include('partials.portal-switcher')
+
                                 @auth
                                     <div class="p-2">
                                         <button type="button"
