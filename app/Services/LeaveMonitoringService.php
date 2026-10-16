@@ -93,6 +93,7 @@ class LeaveMonitoringService
         }
 
         return $this->isRegularEmployee($employee, $referenceDate)
+            || $employee->isContractualFaculty()
             || $this->isEmployeeWithOneYearService($employee, $referenceDate);
     }
 
@@ -117,11 +118,13 @@ class LeaveMonitoringService
 
     /**
      * A probationary employee receives leave and DTR attendance benefits
-     * after one year of service, except for part-time faculty.
+     * after one year of service, except for part-time faculty. Contractual
+     * full-time faculty receive them from their first day.
      */
     public function isEligibleForAttendance(Employee $employee, ?Carbon $referenceDate = null): bool
     {
         return $this->isRegularEmployee($employee, $referenceDate)
+            || $employee->isContractualFaculty()
             || $this->isEmployeeWithOneYearService($employee, $referenceDate);
     }
 

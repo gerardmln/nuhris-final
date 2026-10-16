@@ -1337,22 +1337,20 @@ class OperationsController extends Controller
             $balances = $employee->leaveBalances;
             $today = now()->startOfDay();
             $hireDate = $employee->hire_date ? Carbon::parse($employee->hire_date)->startOfDay() : null;
-            $calendarYearStart = $leaveBalanceService->currentCalendarYearStart();
+            $calendarYearStart = $leaveBalanceService->usagePeriodStart($employee);
             $leaveMonitoringService = app(LeaveMonitoringService::class);
             $isRegularEmployee = $leaveMonitoringService->isRegularEmployee($employee, $today);
 
-            $requests = $employee->leaveRequests->filter(function (LeaveRequest $request) use ($hireDate, $today) {
+            $requests = $employee->leaveRequests->filter(function (LeaveRequest $request) use ($hireDate) {
                 if (! $request->start_date) {
                     return false;
                 }
 
                 $startDate = $request->start_date->copy()->startOfDay();
 
-                if ($hireDate && $startDate->lt($hireDate)) {
-                    return false;
-                }
-
-                return $startDate->lte($today);
+                // Approved upcoming leave is already deducted from the balance,
+                // so it counts as used too; only leave before hire is ignored.
+                return ! ($hireDate && $startDate->lt($hireDate));
             });
 
             $approvedRequests = $requests

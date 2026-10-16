@@ -11,6 +11,7 @@ use App\Models\EmployeeScheduleSubmission;
 use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\EmployeeScheduleService;
+use App\Services\LeaveBalanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -174,16 +175,21 @@ class ScheduleManagementController extends Controller
             ->whereKeyNot($submission->id)
             ->update(['is_current' => false]);
 
+        $leaveTermStarted = app(LeaveBalanceService::class)->applyApprovedSchedule($submission);
+        $leaveTermNote = $leaveTermStarted
+            ? ' Leave term starts '.$submission->term_start_date->format('M j, Y').' (3 VL / 3 SL / 3 EL).'
+            : '';
+
         app(AuditLogService::class)->record(
             'APPROVE',
             'Schedules',
-            'Approved schedule for '.($submission->employee?->full_name ?? 'an employee').'.',
+            'Approved schedule for '.($submission->employee?->full_name ?? 'an employee').'.'.$leaveTermNote,
             'Success',
-            ['submission_id' => $submission->id, 'employee_id' => $submission->employee?->employee_id]
+            ['submission_id' => $submission->id, 'employee_id' => $submission->employee?->employee_id, 'leave_term_started' => $leaveTermStarted]
         );
 
         return redirect()->route('admin.schedules.index')
-            ->with('success', 'Schedule for '.$submission->employee?->full_name.' has been approved.');
+            ->with('success', 'Schedule for '.$submission->employee?->full_name.' has been approved.'.$leaveTermNote);
     }
 
     public function resetAll(): RedirectResponse

@@ -23,6 +23,7 @@ class EmployeeScheduleSubmission extends Model
         'reviewed_by',
         'semester_label',
         'academic_year',
+        'term_start_date',
         'status',
         'submitted_at',
         'reviewed_at',
@@ -34,6 +35,7 @@ class EmployeeScheduleSubmission extends Model
     {
         return [
             'submitted_at' => 'datetime',
+            'term_start_date' => 'date',
             'reviewed_at' => 'datetime',
             'is_current' => 'boolean',
         ];

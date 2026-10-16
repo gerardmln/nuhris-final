@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Employee;
+use App\Models\EmployeeScheduleSubmission;
 use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
 use Carbon\Carbon;
@@ -37,6 +38,12 @@ class LeaveBalanceService
         'part_time_faculty' => [
             'Vacation Leave' => 9,
             'Sick Leave' => 9,
+            'Emergency Leave' => 3,
+        ],
+        // Fixed per term; resets when schedules are reset (see startNewLeaveTerm).
+        'contractual_faculty' => [
+            'Vacation Leave' => 3,
+            'Sick Leave' => 3,
             'Emergency Leave' => 3,
         ],
     ];
@@ -111,6 +118,10 @@ class LeaveBalanceService
      */
     private function determineEmployeeTypeKey(string $employmentType): ?string
     {
+        if (Employee::isContractualFacultyType($employmentType)) {
+            return 'contractual_faculty';
+        }
+
         if (str_contains($employmentType, 'part-time') ||
             str_contains($employmentType, 'part time') ||
             str_contains($employmentType, 'parttime')) {
@@ -139,6 +150,7 @@ class LeaveBalanceService
         if (
             ! $employee->hire_date
             || $this->isPartTimeEmployee($employee)
+            || $employee->isContractualFaculty()
         ) {
             return $totalCredits;
         }
@@ -188,13 +200,64 @@ class LeaveBalanceService
             ->where('employee_id', $employee->id)
             ->where('leave_type', $leaveType)
             ->where('status', 'approved')
-            ->whereDate('start_date', '>=', $this->currentCalendarYearStart()->toDateString())
+            ->whereDate('start_date', '>=', $this->usagePeriodStart($employee)->toDateString())
             ->sum('days_deducted');
     }
 
     public function currentCalendarYearStart(): Carbon
     {
         return now()->startOfYear();
+    }
+
+    /**
+     * Leave used on or after this date counts against the current balance:
+     * January 1 for most employees, the current term start for contractual
+     * faculty (from their approved schedule's term start date; before their
+     * first one, their hire date).
+     */
+    public function usagePeriodStart(Employee $employee): Carbon
+    {
+        if (! $employee->isContractualFaculty()) {
+            return $this->currentCalendarYearStart();
+        }
+
+        $termStart = $employee->leave_term_started_at ?? $employee->hire_date;
+
+        return $termStart ? Carbon::parse($termStart)->startOfDay() : Carbon::create(1970);
+    }
+
+    /**
+     * Called when a schedule is approved: a contractual faculty member's
+     * leave term follows the term start date on their approved schedule.
+     *
+     * @return bool whether a new leave term started
+     */
+    public function applyApprovedSchedule(EmployeeScheduleSubmission $submission): bool
+    {
+        $employee = $submission->employee;
+
+        return $employee && $submission->term_start_date
+            && $this->startLeaveTerm($employee, $submission->term_start_date);
+    }
+
+    /**
+     * Set the start of a contractual faculty member's leave term (the term
+     * start date on their approved schedule). Leave dated before it no
+     * longer counts, so a new term begins at 3 VL / 3 SL / 3 EL.
+     *
+     * @return bool whether the employee's leave term changed
+     */
+    public function startLeaveTerm(Employee $employee, Carbon $termStart): bool
+    {
+        if (! $employee->isContractualFaculty()
+            || $employee->leave_term_started_at?->isSameDay($termStart)) {
+            return false;
+        }
+
+        $employee->forceFill(['leave_term_started_at' => $termStart->toDateString()])->save();
+        $this->initializeOrUpdateBalance($employee);
+
+        return true;
     }
 
     /**
@@ -236,7 +299,7 @@ class LeaveBalanceService
             $requests = $approvedRequests->get($leaveType, collect());
             $totalDays = (float) ($this->isDeductibleLeaveType($leaveType)
                 ? $requests
-                    ->filter(fn (LeaveRequest $request) => $request->start_date?->gte($this->currentCalendarYearStart()))
+                    ->filter(fn (LeaveRequest $request) => $request->start_date?->gte($this->usagePeriodStart($employee)))
                     ->sum('days_deducted')
                 : $requests->sum('days_deducted'));
             $count = $requests->count();

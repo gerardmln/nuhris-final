@@ -262,7 +262,7 @@ class EmployeeBulkImportService
             'first_name' => (string) ($data['first_name'] ?? ''),
             'last_name' => (string) ($data['last_name'] ?? ''),
             'employment_type' => $employmentType ?? (string) ($data['employment_type'] ?? ''),
-            'employment_status' => filled($data['employment_status'] ?? null) && ! $this->isPartTime($employmentType)
+            'employment_status' => filled($data['employment_status'] ?? null) && ! $this->isProbationaryOnly($employmentType)
                 ? strtolower((string) $data['employment_status'])
                 : 'probationary',
             'department_id' => $position && Str::contains(Str::lower($position), '(shs)')
@@ -442,9 +442,13 @@ class EmployeeBulkImportService
         }
     }
 
-    private function isPartTime(?string $employmentType): bool
+    /**
+     * Part-time and contractual full-time faculty are always probationary.
+     */
+    private function isProbationaryOnly(?string $employmentType): bool
     {
-        return Str::lower((string) $employmentType) === 'part-time faculty';
+        return Str::lower((string) $employmentType) === 'part-time faculty'
+            || Employee::isContractualFacultyType($employmentType);
     }
 
     private function comparable(mixed $value): string

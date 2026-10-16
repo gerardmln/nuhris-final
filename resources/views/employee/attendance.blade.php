@@ -65,6 +65,22 @@
                     @error('term_label')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                     @enderror
+
+                    @if ($asksTermStart)
+                        <label for="term_start_date" class="mb-1 mt-4 block text-sm font-semibold text-slate-700">Term start date</label>
+                        <input
+                            id="term_start_date"
+                            type="date"
+                            name="term_start_date"
+                            value="{{ old('term_start_date', $currentSchedule?->term_start_date?->toDateString()) }}"
+                            class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+                            required
+                        >
+                        <p class="mt-1 text-xs text-slate-500">First day of this term. Your 3 VL / 3 SL / 3 EL start counting from this date once HR approves the schedule.</p>
+                        @error('term_start_date')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
+                    @endif
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">

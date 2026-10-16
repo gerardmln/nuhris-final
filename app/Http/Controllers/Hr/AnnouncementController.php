@@ -115,12 +115,12 @@ class AnnouncementController extends Controller
             }
 
             if (! $announcement->target_user_id && $announcement->target_employee_type) {
-                $employeeType = $announcement->target_employee_type === 'faculty'
-                    ? 'Faculty'
-                    : 'Admin Support Personnel';
+                $employeeTypes = $announcement->target_employee_type === 'faculty'
+                    ? ['Faculty', Employee::TYPE_CONTRACTUAL_FACULTY]
+                    : ['Admin Support Personnel'];
 
-                $userQuery->whereHas('employeeProfile', function ($query) use ($employeeType): void {
-                    $query->where('employment_type', $employeeType);
+                $userQuery->whereHas('employeeProfile', function ($query) use ($employeeTypes): void {
+                    $query->whereIn('employment_type', $employeeTypes);
                 });
             }
 

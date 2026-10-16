@@ -326,7 +326,7 @@
                         <option value="probationary" selected>Probationary</option>
                     </select>
                     <input type="hidden" data-employee-control="employment_status_hidden" value="probationary" disabled>
-                    <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time faculty are always probationary.</p>
+                    <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time and contractual faculty are always probationary.</p>
                 </div>
                 <div data-employee-field="department">
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Department *</label>
@@ -424,7 +424,7 @@
                         <option value="probationary" selected>Probationary</option>
                     </select>
                     <input type="hidden" data-employee-control="employment_status_hidden" value="probationary" disabled>
-                    <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time faculty are always probationary.</p>
+                    <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time and contractual faculty are always probationary.</p>
                 </div>
                 <div data-employee-field="department">
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Department *</label>
@@ -573,7 +573,7 @@
                         <option value="probationary">Probationary</option>
                     </select>
                     <input type="hidden" data-employee-control="employment_status_hidden" value="probationary" disabled>
-                    <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time faculty are always probationary.</p>
+                    <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time and contractual faculty are always probationary.</p>
                 </div>
                 <div data-employee-field="department">
                     <label class="mb-1 block text-sm font-semibold text-[#1f2b8b]">Department *</label>

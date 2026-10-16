@@ -70,7 +70,7 @@ class ImportVerificationService
                 'Email' => [$this->text($cell('email')), $employee->email, fn ($a, $b) => strcasecmp($a, (string) $b) === 0],
                 'Employee type' => [$type, $employee->employment_type, fn ($a, $b) => $this->same($a, $b)],
                 'Employment status' => [
-                    $statusCell === '' || $this->same($type, 'Part-Time Faculty') ? 'probationary' : $statusCell,
+                    $statusCell === '' || $this->same($type, 'Part-Time Faculty') || $this->same($type, Employee::TYPE_CONTRACTUAL_FACULTY) ? 'probationary' : $statusCell,
                     $employee->employment_status,
                     fn ($a, $b) => $this->same($a, $b),
                 ],

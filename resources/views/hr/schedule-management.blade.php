@@ -65,6 +65,9 @@
                     </div>
                     @if ($submission)
                         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">Term: {{ $submission->term_label ?? $submission->semester_label }}</span>
+                        @if ($submission->term_start_date)
+                            <span class="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700" title="Contractual faculty leave (3 VL / 3 SL / 3 EL) counts from this date once approved">Term starts: {{ $submission->term_start_date->format('M j, Y') }}</span>
+                        @endif
                     @else
                         <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">Needs to upload schedule</span>
                     @endif

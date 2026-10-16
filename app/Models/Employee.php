@@ -26,6 +26,23 @@ class Employee extends Model
         });
     }
 
+    public const TYPE_CONTRACTUAL_FACULTY = 'Contractual Full-Time Faculty';
+
+    /**
+     * Contractual full-time faculty are always probationary, get 3 VL / 3 SL /
+     * 3 EL that reset every term (when schedules are reset), and receive DTR
+     * leave/holiday benefits from day one.
+     */
+    public function isContractualFaculty(): bool
+    {
+        return self::isContractualFacultyType($this->employment_type);
+    }
+
+    public static function isContractualFacultyType(?string $employmentType): bool
+    {
+        return strcasecmp(trim((string) $employmentType), self::TYPE_CONTRACTUAL_FACULTY) === 0;
+    }
+
     /**
      * Employee IDs are compared without dashes or spaces, so "23-8041" and
      * "238041" refer to the same person.
@@ -110,6 +127,7 @@ class Employee extends Model
         'status',
         'hire_date',
         'resume_last_updated_at',
+        'leave_term_started_at',
     ];
 
     protected function casts(): array
@@ -117,6 +135,7 @@ class Employee extends Model
         return [
             'hire_date' => 'date',
             'resume_last_updated_at' => 'date',
+            'leave_term_started_at' => 'date',
         ];
     }
 

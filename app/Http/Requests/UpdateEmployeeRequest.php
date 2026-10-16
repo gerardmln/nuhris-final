@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Department;
+use App\Models\Employee;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,7 @@ class UpdateEmployeeRequest extends FormRequest
         $employmentStatus = $this->input('employment_status');
 
         if (! Str::contains($position, '(shs)')) {
-            if ($employmentStatus === null || Str::lower((string) $this->input('employment_type')) === 'part-time faculty') {
+            if ($employmentStatus === null || $this->isProbationaryOnlyType()) {
                 $this->merge(['employment_status' => 'probationary']);
             }
 
@@ -38,7 +39,7 @@ class UpdateEmployeeRequest extends FormRequest
             'department_id' => Department::shsId(),
         ]);
 
-        if ($employmentStatus === null || Str::lower((string) $this->input('employment_type')) === 'part-time faculty') {
+        if ($employmentStatus === null || $this->isProbationaryOnlyType()) {
             $this->merge(['employment_status' => 'probationary']);
         }
     }
@@ -65,7 +66,7 @@ class UpdateEmployeeRequest extends FormRequest
             || Str::contains($selectedPosition, ['professor', 'dean', 'program chair', 'instructor', '(shs)']);
         $allowedRankings = $this->allowedRankingsForPosition($selectedPosition, $rankings);
         $requiresRanking = ! empty($allowedRankings);
-        $employmentStatuses = $isPartTimeFaculty ? ['probationary'] : ['regular', 'probationary'];
+        $employmentStatuses = $this->isProbationaryOnlyType() ? ['probationary'] : ['regular', 'probationary'];
 
         $allowedPositions = match (true) {
             $isPartTimeFaculty => ['Part-Time Faculty'],
@@ -94,6 +95,17 @@ class UpdateEmployeeRequest extends FormRequest
             'status' => ['sometimes', 'in:active,on_leave,resigned,terminated'],
             'hire_date' => ['nullable', 'date'],
         ];
+    }
+
+    /**
+     * Part-time and contractual full-time faculty are always probationary.
+     */
+    private function isProbationaryOnlyType(): bool
+    {
+        $employmentType = (string) $this->input('employment_type');
+
+        return Str::lower($employmentType) === 'part-time faculty'
+            || Employee::isContractualFacultyType($employmentType);
     }
 
     public function messages(): array

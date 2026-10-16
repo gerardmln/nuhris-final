@@ -545,6 +545,7 @@ class PortalController extends Controller
             'weeklyWorkHours' => $scheduleService->weeklyWorkHoursLabel($currentSchedule),
             'scheduleDayMap' => $scheduleDays,
             'canEditSchedule' => $canEditSchedule,
+            'asksTermStart' => (bool) $employee?->isContractualFaculty(),
             'overallResult' => $overallResult,
             'periods' => $periods,
             'selectedMonth' => $selectedDate->month,
@@ -569,11 +570,14 @@ class PortalController extends Controller
         }
 
         $rules['term_label'] = ['required', 'string', 'in:'.implode(',', self::ALLOWED_TERM_LABELS)];
+        // Contractual full-time faculty leave resets per term, starting on this date once HR approves.
+        $rules['term_start_date'] = $employee->isContractualFaculty() ? ['required', 'date'] : ['prohibited'];
 
         $validator = Validator::make($request->all(), $rules, [
             'days.*.time_in.required_if' => 'Please enter a time in for each work day.',
             'days.*.time_out.required_if' => 'Please enter a time out for each work day.',
             'days.*.time_out.after' => 'The time out must be later than the time in.',
+            'term_start_date.required' => 'Please enter the date your term starts.',
         ]);
 
         foreach ($scheduleService->weeklyDays() as $day) {
@@ -601,6 +605,7 @@ class PortalController extends Controller
                 'submitted_by' => $request->user()->id,
                 'submitted_at' => now(),
                 'academic_year' => null,
+                'term_start_date' => $validated['term_start_date'] ?? null,
                 'status' => EmployeeScheduleSubmission::STATUS_PENDING,
                 'reviewed_by' => null,
                 'reviewed_at' => null,

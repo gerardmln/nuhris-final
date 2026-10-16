@@ -65,7 +65,7 @@
             <option value="probationary" @selected(old('employment_status', $employee->employment_status ?? 'probationary') === 'probationary')>Probationary</option>
         </select>
         <input type="hidden" data-employee-control="employment_status_hidden" value="probationary" disabled>
-        <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time faculty are always probationary.</p>
+        <p data-employee-help="employment_status" class="mt-1 hidden text-xs text-slate-500">Part-time and contractual faculty are always probationary.</p>
         @error('employment_status')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
     </div>
 

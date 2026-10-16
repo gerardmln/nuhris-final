@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Department;
+use App\Models\Employee;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,7 @@ class StoreEmployeeRequest extends FormRequest
         $employmentStatus = $this->input('employment_status');
 
         if (! Str::contains($position, '(shs)')) {
-            if ($employmentStatus === null || Str::lower((string) $this->input('employment_type')) === 'part-time faculty') {
+            if ($employmentStatus === null || $this->isProbationaryOnlyType()) {
                 $this->merge(['employment_status' => 'probationary']);
             }
 
@@ -38,7 +39,7 @@ class StoreEmployeeRequest extends FormRequest
             'department_id' => Department::shsId(),
         ]);
 
-        if ($employmentStatus === null || Str::lower((string) $this->input('employment_type')) === 'part-time faculty') {
+        if ($employmentStatus === null || $this->isProbationaryOnlyType()) {
             $this->merge(['employment_status' => 'probationary']);
         }
     }
@@ -78,7 +79,7 @@ class StoreEmployeeRequest extends FormRequest
         };
 
         $isAdminEmployeeCreate = $this->route()?->getName() === 'admin.employees.store';
-        $employmentStatuses = $isPartTimeFaculty ? ['probationary'] : ['regular', 'probationary'];
+        $employmentStatuses = $this->isProbationaryOnlyType() ? ['probationary'] : ['regular', 'probationary'];
 
         return [
             'employee_id' => [
@@ -102,6 +103,17 @@ class StoreEmployeeRequest extends FormRequest
             'status' => ['nullable', 'in:active'],
             'hire_date' => ['nullable', 'date'],
         ];
+    }
+
+    /**
+     * Part-time and contractual full-time faculty are always probationary.
+     */
+    private function isProbationaryOnlyType(): bool
+    {
+        $employmentType = (string) $this->input('employment_type');
+
+        return Str::lower($employmentType) === 'part-time faculty'
+            || Employee::isContractualFacultyType($employmentType);
     }
 
     public function messages(): array

@@ -15,6 +15,11 @@
             return normalize(value) === 'part-time faculty';
         }
 
+        // Part-time and contractual full-time faculty are always probationary.
+        function isProbationaryOnlyType(value) {
+            return isPartTimeFacultyValue(value) || normalize(value) === 'contractual full-time faculty';
+        }
+
         function isShsPosition(position) {
             return normalize(position).includes('(shs)');
         }
@@ -217,7 +222,7 @@
             }
 
             if (employmentStatusControl) {
-                const isPartTime = isPartTimeFacultyValue(employmentType);
+                const isPartTime = isProbationaryOnlyType(employmentType);
                 setFieldVisible(employmentStatusField, !isPartTime);
                 employmentStatusControl.disabled = isPartTime;
                 if (employmentStatusHidden) {
@@ -306,7 +311,8 @@
                 return;
             }
 
-            const isPartTime = String(typeControl.value || '').trim().toLowerCase() === 'part-time faculty';
+            const typeValue = String(typeControl.value || '').trim().toLowerCase();
+            const isPartTime = typeValue === 'part-time faculty' || typeValue === 'contractual full-time faculty';
             statusField.hidden = isPartTime;
             statusField.style.display = isPartTime ? 'none' : '';
             statusControl.disabled = isPartTime;

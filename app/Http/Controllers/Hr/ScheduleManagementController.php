@@ -11,6 +11,7 @@ use App\Models\EmployeeScheduleSubmission;
 use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\EmployeeScheduleService;
+use App\Services\LeaveBalanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -128,15 +129,20 @@ class ScheduleManagementController extends Controller
             sprintf('Your weekly schedule for %s %s was approved by HR.', $submission->semester_label, $submission->academic_year)
         );
 
+        $leaveTermStarted = app(LeaveBalanceService::class)->applyApprovedSchedule($submission);
+        $leaveTermNote = $leaveTermStarted
+            ? ' Leave term starts '.$submission->term_start_date->format('M j, Y').' (3 VL / 3 SL / 3 EL).'
+            : '';
+
         app(AuditLogService::class)->record(
             'APPROVE',
             'Schedules',
-            'Approved schedule for '.($submission->employee?->full_name ?? 'an employee').'.',
+            'Approved schedule for '.($submission->employee?->full_name ?? 'an employee').'.'.$leaveTermNote,
             'Success',
-            ['submission_id' => $submission->id, 'employee_id' => $submission->employee?->employee_id]
+            ['submission_id' => $submission->id, 'employee_id' => $submission->employee?->employee_id, 'leave_term_started' => $leaveTermStarted]
         );
 
-        return back()->with('success', 'Schedule approved successfully.');
+        return back()->with('success', 'Schedule approved successfully.'.$leaveTermNote);
     }
 
     public function clear(Request $request, EmployeeScheduleSubmission $submission): RedirectResponse
